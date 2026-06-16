@@ -1,0 +1,1 @@
+worker:python aws_s3_connect.py

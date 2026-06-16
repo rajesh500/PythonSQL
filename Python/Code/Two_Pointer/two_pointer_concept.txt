@@ -1,0 +1,157 @@
+Two Pointers Technique:
+Two Pointers is a technique where you use two variables (pointers) to move through an array, string,
+or list to solve problems faster and using less memory.
+Instead of using two loops (which is slower). we use two pointers.
+
+
+The pointers can:
+Start at different positions
+move in the same or opposite directions
+move at different speeds
+The idea is to avoid extra space and reduce time.
+
+when to use it.
+you should think about using two pointers when 
+you need to process a list from both start and end
+you want to find pairs that match a condition
+you need to reverse an array
+you need to remove duplicates from a sorted list
+you want to find the middle of a list
+you want to merge two sorted arrays
+you want to solve a problem without using extra space
+
+
+Types of two pointers:
+left-right pointers
+How it works:
+one pointer starts at the left (start of list)
+one pointer starts at the right (end of list)
+Both move toward each other or based on condition
+
+
+use cases:
+check if a string is a palindrome
+find two numbers in a sorted array that add up to target
+reverse an array
+partition an array
+
+Example:
+
+def is_palindrome(s):
+	left = 0 
+	right = len(s)-1
+	while left < right:
+		if s[left] != s[right]:
+			return False
+		left = left + 1
+		right = right - 1
+	return True
+
+Fast-Slow Pointers (Tortoise & Hare)
+How it works:
+Both pointers start a the beginning 
+one moves slow( 1 step at a time)
+one moves fast (2 steps at a time)
+
+use cases:
+Find the middle of a  list
+Detect cycle in a linked list
+Remove duplicates in a sorted list
+
+Example:
+def find_middle(nums):
+	slow = 0
+    fast = 0
+
+	while fast < len(nums)-1 and fast + 1 < len(nums):
+		slow = slow + 1
+		fast = fast + 2
+	return nums[slow]
+
+
+
+
+Time and space complexities:
+Type  			Time complexity 	space complexity
+Left-Right Pointers  		o(n)			o(1)
+Fast-slow pointers		o(n)			o(1)
+
+why?
+Each pointer touches each element once --> o(n) time
+you only use two variables --> o(1) space
+
+Advantages
+simple to implement
+faster than using two loops (no O(n2))
+saves space o(1)
+works really well with sorted arrays and linked lists.
+Help with tricky problems involving pairs or moving windows
+
+	
+
+
+
+
+Sliding Window:
+
+
+
+
+
+A) Opposite ends (often on sorted arrays / strings)
+
+1. Pair sum in sorted array: Return indices of two numbers that sum to target.
+2. 3Sum / 4Sum: Find unique triplets/quadruplets that sum to target (sort + fix one/two + two pointers).
+3. Container With Most Water: Max area between two vertical lines.
+4. Trapping Rain Water: Compute trapped water (two pointers + left/right max).
+5. Valid Palindrome: Check if string is palindrome ignoring non-alphanumerics.
+6. Reverse Vowels of a String: Swap vowels using two ends.
+7. Squares of a Sorted Array: Return sorted squares (fill from end using two ends).
+
+B) Slow/Fast pointers (in-place, filtering, cycles)
+
+8. Remove duplicates from sorted array: Keep unique elements in-place.
+9. Remove element: Remove all occurrences of val in-place, return new length.
+10. Move zeroes: Move all 0s to end, preserve order of others.
+11. Sort colors (0/1/2): Dutch National Flag (3 pointers variant).
+12. Linked list cycle detection: Detect cycle (Floyd’s slow/fast).
+13. Middle of linked list: Find middle node via slow/fast.
+14. Remove Nth node from end: Two pointers with a fixed gap.
+
+C) Same-direction two pointers (merge / compare)
+
+15. Merge two sorted arrays (or lists): Merge in sorted order.
+16. Intersection of two sorted arrays: Unique intersection using i/j.
+17. Backspace string compare: Compare two strings with backspaces (scan from end with pointers).
+18. Is subsequence: Check if s is subsequence of t.
+
+D) Sliding window (two pointers with a maintained invariant)
+
+19.  substring without repeating characters: Expand right, shrink left on duplicates.
+20. Minimum window substring: Smallest window containing all chars of t.
+21. Max consecutive ones with K flips: Longest window with at most K zeros.
+22. Subarray sum ≥ S (positive ints): Smallest length subarray with sum ≥ S.
+23. Longest subarray with at most K distinct: Keep a frequency map, shrink when distinct > K.
+
+E) Partition-style (two pointers around a pivot)
+
+24. Partition array by parity: Evens left, odds right.
+25. Quickselect partition step: Partition around pivot index/value.
+
+Quick way to choose the right pattern
+
+Sorted + pair/closest ⇒ opposite ends.
+In-place “remove/keep” ⇒ slow/fast.
+Two sequences ⇒ same-direction merge/compare.
+“Longest/shortest subarray/substring” with constraints ⇒ sliding window.
+
+
+
+
+
+
+
+
+
+
+

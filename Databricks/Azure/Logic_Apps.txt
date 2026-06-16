@@ -1,0 +1,116 @@
+Logic Apps:
+
+What is Azure Logic Apps?
+Azure Logic Apps is an automated workflow that integrate our apps, data, services and systems.It helps in consuming range of APIs exposed as connectors, that will help in performing the sequence of actions defined in the workflow whenever the trigger gets fired.
+Azure Logic Apps helps in simplifying and implementing scalable integrations and automates process as a series of steps known as a workflow.It allows all the developers for designing workflows that articulate intent.
+
+What are the Components of Azure LogicApps?
+Workflow
+Managed Connectors
+Triggers
+Actions
+
+What are the advantages of Azure LogicApps?
+Benefits of Amazon EBS are as follows:
+•	Easy to use design tools - It can be designed end-to-end in the browser.
+•	Compose SaaS easily - It allows us to connect disparate systems.
+•	Extensibility baked in.
+•	Real integration horsepower - It can easily leverage the power of BizTalk.
+
+What are Triggers in LogicApps?
+Triggers are the starting point for the workflow of Azure LogicApps that will help in firing new data event that meets the trigger condition occurs, it also provides various triggers.
+What are the types Azure Logic Apps Triggers?
+There are 3 types of Triggers:
+Poll triggers helps to poll our services at a specified frequency for checking new data.
+Push triggers helps in triggering new instance of our logic app.
+Recurrence triggers helps in prescribing schedules.
+
+How do you trigger a Logic App?
+We can trigger a Logic App by: Creating a blank Logic App in the Azure Portal.
+Selecting or searching the trigger from the list given in the Logic App Designer.
+Running a trigger in a saved Logic App by using the Run Trigger option in the overview section.
+How can we manage or delete our Azure logic app connections?
+
+
+
+What are Connectors?
+Connectors helps to provide ways for the users for connecting our accounts and leverage a set of pre-built actions and triggers for building our apps and workflows.It is an integral part when we create logic apps.
+What are the types of Connectors?
+There are 3 types of connectors:
+Standard connectors - It is available and also included when we use logic apps.
+Integration account connectors - It is available when we are purchasing an integration account.
+Enterprise connectors - It is included at an additional cost.
+When can we use Logic Apps?
+There are typical scenarios where we can use Logic Apps:
+SaaS event processing
+Timer-based processing
+Data Ingestion
+Business Process
+Integration between services
+Content-based routing
+Data transformation and enrichment
+
+
+
+
+
+
+
+
+Assume that you are working as an Azure Cloud Platform engineer at Azurelib.com. You have been asked to create a workflow using the Logic App in the Azure cloud. What would be the first thing activity you may add while developing a logic app workflow.
+Every logic app has to start from the trigger. Hence your first activity would be the logic app trigger. You will add the trigger based on the requirement and then you will keep on adding the operations/actions as per the need.
+Assume that you are working as an Azure data engineer at Azurelib.com. You have to take a decision whether to use the Logic App or Azure function, how would you decide.
+There are certain parameters that needed to be taken into consideration while making any decision. For example, you should start with checking all the different data sources and applications with which this proposed workflow has to interact with. If you feel there are different sources like Service Bus, Office 365 services such as Outlook, Excel, and SharePoint, Enterprise systems such as SAP and IBM MQ, or maybe file shares such as FTP and SFTP.  In case your workflow needs connectors for any kind of these systems then probably logic app would be the prudent choice because of the rich number of connectors available.
+You may also have to check if you are looking on developing the no-code workflow. Hence these are some of the design principles which you consider while deciding.
+Assume that you have worked as a data engineer with Azurelib.com. Your client has asked to develop a logic app that may go to connect to multiple data sources. How would you do the development in such a way that, when you move from dev to UAT or Prod environment there would be very minimal changes?
+I will develop my logic app using the logic app parameters. Instead of giving the data source details hardcoded like server address and credentials, I will use the logic app parameters. Once we move from one environment to the next just change the details in the parameters and the rest all works smoothly.
+Azurelib.com has hired you to work as a data engineer. The company is using the ADF to do the cloud migration. As a part of it, Azurelib.com is moving old log files to the Azure storage. Once the file gets copied to a blob storage an email has to be triggered to all the team members. What type of trigger would be the best choice for your logic app workflow in this scenario
+An email has to be triggered once the file gets copied in the blob storage. Hence I would put the blob trigger for logic app workflow.
+You are a cloud developer who works with Azurelib.com. Assume that there are a couple of existing workflows that are failing due to some reasons. You have been asked to check, where you can find the details for them?
+I will go to the Azure logic app account in the Azure portal. Under the Logic App overview section, you will see the  Run History tab. Click on it and then you can review all the logic app run history.
+What are the built-in operation in the Azure Logic Apps?
+A built-in trigger or action is an operation that runs natively in Azure Logic Apps. For example, built-in operations provide ways for you to control your workflow’s schedule or structure, run your own code, manage and manipulate data, send or receive requests to an endpoint, and complete other tasks in your workflow.
+How would the logic app work conceptually?
+In a logic app, each workflow always starts with a single trigger A trigger fires when a condition is met, for example, when a specific event happens or when data meets specific criteria. Many triggers include scheduling capabilities that control how often your workflow runs. Following the trigger, one or more actions run operations that, for example, process, handle, or convert data that travels through the workflow, or that advance the workflow to the next step.
+What are the different RBAC built in roles available for Logic App?
+•	Logic App Contributor: Lets you manage logic apps, but you can’t change access to them.
+•	Logic App Operator: Lets you read, enable, and disable logic apps, but you can’t edit or update them.
+•	Contributor: Grants full access to manage all resources, but does not allow you to assign roles in Azure RBAC, manage assignments in Azure Blueprints, or share image galleries.
+What do you mean by Connectors in the Azure Logic App?
+When you build workflows using Azure Logic Apps, you can use connectors to help you quickly and easily access data, events, and resources in other apps, services, systems, protocols, and platforms – often without writing any code. A connector provides prebuilt operations that you can use as steps in your workflows. Azure Logic Apps provides hundreds of connectors that you can use. If no connector is available for the resource that you want to access, you can use the generic HTTP operation to communicate with the service, or you can create a custom connector.
+What do you mean by pooling trigger and push trigger?
+Polling triggers	Push triggers
+Regularly checks a service endpoint for new data. When new data exists, the trigger creates and runs a new workflow instance with the data as input.	Listens for data at a service endpoint and waits until a specific event happens. When the event happens, the trigger fires immediately, creating and running a new workflow instance that uses any available data as input.
+
+Trigger Types in Logic Apps
+How you can create a logic app callable through a URL and able to receive inbound requests?
+In order to create a logic app that can be called by using the HTTPS URL, we can use these three types of triggers in the app.
+•	Request
+•	HTTP Webhook
+•	Managed connector triggers that have the ApiConnectionWebhook type and can receive inbound HTTPS requests
+How to get bulk data in the Azure logic app using pagination?
+When you retrieve data, items, or records by using a connector action in Azure Logic Apps, you might get result sets so large that the action doesn’t return all the results at the same time. Some actions let you turn on a pagination setting so that your logic app can retrieve more results up to the pagination limit, but return those results as a single message when the action finishes. When you use pagination, you must specify a threshold value, which is the target number of results you want the action to return.
+By default Azure logic app runs action in a sequential manner. Can we run in parallel mode?
+Yes, we can run Azure logic app action in the parallel mode, by creating the parallel branch. Later on you can join this parallel branch before finish.
+Can we use any type of object in the Foreach to operate upon in the logic app?
+No only Array type of object is permissible in the foreach to iterate upon.
+What do you mean by scopes in the Azure Logic Apps?
+In logic apps, in some cases, you wanted to run actions only after another group of actions succeeds or fails then you can group those actions inside a scope. This structure is useful when you want to organize actions as a logical group, evaluate that group’s status, and perform actions that are based on the scope’s status. After all the actions in a scope finish running, the scope also gets its own status
+Microsoft Azure Logic Apps Official Documentation Link
+Final thoughts
+In this blog, I have tried to assemble up a couple of Azure Logic Apss interview questions and answers. This is one of the very important guides for freshers and experienced professional Azure data engineer developers and leads. In this list of interview preparation guide my main focus was to cover all the question which is frequently and mostly asked on Azure logic apps.
+
+
+
+Azure Logic App pricing
+Azure Logic App Pricing is completely based on executions of triggers, actions, and connectors.
+•	Actions – $0.000025/ Exec
+•	Standard Connector – $0.000125/ Exec
+•	Enterprise Connector – $0.001/ Exec
+For Integration Service Environment (ISE), the pricing counts on the base unit and scale unit. For Integration account with Logic App B2B, the pricing will vary based on the tiers
+•	Basic – $0.42/ Hr
+•	Standard – $1.37/ Hr
+
+
+https://www.serverless360.com/azure-logic-apps
+

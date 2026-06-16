@@ -1,0 +1,734 @@
+Unity Catalog:
+Unity Catalog is a unified data and AI governance solution built directly into the databricks platform.
+open source unified governance (define onces and used anywhere).
+
+Features:
+unified access control
+centralized metadata
+data lineage
+security and compliance 
+comprehensive governance.
+
+
+metastore  (metadata)
+|
+catalog
+|
+schema 
+|
+Table -- view -- volumn -- model -- function
+
+catalog.schema.table
+
+
+
+
+Metadata:
+data about data, that describes the structure, origin and usage of datasets, acting as a label or guidebook.
+
+Technical Metadata: Defines the schema, data types, column names, table structures and storage formats.
+Operational Metadata: Tracks data pipeline performance, job schedules, runtime, metrics and lineage(where data came from and how it changed).
+Business Metadata: Adds context such as data ownership, definitions.
+
+
+Data Lineage:
+Life cycle of data
+how data moves and changes from its original source to where it’s ultimately used (reports, dashboards, ML models, downstream apps). 
+Think of it as a traceable “chain of custody” for data.
+
+What it captures:
+Origins (sources): databases, files, APIs, SaaS systems
+Movement (pipelines): ingestion, ETL/ELT jobs, streaming flows
+Transformations: joins, filters, aggregations, business rules, calculations
+Destinations (consumers): data warehouse/lakehouse tables, BI metrics, regulatory reports
+Metadata: timestamps, owners, versions, schema changes, job runs
+
+
+what is catalog:
+catalog is the first level of organization.
+ex: finance, sales, hr..
+
+df/b catalog and schema:
+finance is the catalog, with in this catalog a schema will be created.
+
+
+security in catalog:
+RABC, row-level security, column-level security, data masking ....
+
+
+ 
+Lakehouse architecture:  Combination of Dataware house and data lake architecture is called lakehouse.  Both can be done in databricks.
+Dataware house architecture:
+structured data --> ETL --> Dataware house --> BI, reports 
+
+Data Lake architecture:
+structured, semi-structured, unstructured data --> data lake (raw data) --> ETL --> data ware house --> BI, reports, DS
+													  |
+													  |
+												 machine learning from raw layer
+												 
+
+
+
+Tables: Initial version of databricks doesn't have upsert support.
+Later delta table are implemented to support the upsert.
+Delta table is a high-performance data storage format built on top of apache parquet files that enables ACID, data versioning(time travel),
+schema enforcement and streaming and batch integration.
+
+managed and external tables are type of delta tables.
+
+Delta table vs Delta live tables:?
+
+
+
+
+Connect to external source:
+netsuite JDBC connection
+
+
+widgets:
+input parameters to the notebook
+
+
+run notebook:
+%run ../notebook_name
+dbutils.notebook.run(notebook path)
+
+
+dbutils.secret.get(scope = dbss_name, key = password) --> get user name and password.
+username and password will keep in key valut and those will store in databricks as secrets.
+
+df = spark.read.format("delta").load("path")
+read data from delta table using delta concepts:
+from delta.tables import *
+deltaTable = DeltaTable.forpath(spark, 'path')
+display(deltaTable.toDF())
+
+df.write.format("delta").save("path")
+delta.update()  
+delta.merge()
+
+whenNotMatchedInsertAll()  -- insert data into all the fields
+whenNotMatchedInsert() -- insert into specified field.
+
+Timetravel:
+df = spark.read.format("delta").option("versionAsof", 0).load('temp/path')
+
+deltaTable = DeltaTable.convertToDelta(spark, 'path')
+deltaTable.isDeltaTable(spark, 'path')
+
+
+
+Challenges:
+data warehouse   --> separate tool
+ETL --> tool 
+orchestration, BI, data lake, AI/ML for all these separate tools used 
+and all these need to be integrate, data governance will be spill out.
+
+Databricks is the solution.
+
+
+Roles: 
+Account Administrator  --> workspace, metastore, user/permissions
+Metastore admin  --> catalog/data objects
+workspace admin 
+owner 
+
+
+Connect to ADLS account:
+connect to adls account can be done using 
+1. mount point complete user name and password will define here, which will cause vulenrability
+2. key-valut  even though we are not going to define password and user name but key value information will be defined here.
+   whicl will also cause vulenarability.
+3. Managed identity access.
+4. service prinicples.
+
+
+Managed Identity:
+during creating a databrick account or create a access connector for Azure databricks.
+and in the adls account --> IAM provide the access as ADLS contirbutor (read and write access) to the access connector for azure databricks.
+Now create a storage credentials in the databricks and define the above access connector for azure databricks path.
+create a exteral location path and define the ADLS account path here. 
+Hence connection is established secure(the password and username).
+
+
+service principles:
+EntraID --> app registration (create and has tenant and client ID)
+app registration (create secret) secret ID.
+ADLS account --> IAM --> define the permission type (like storage blob data contributor, owner, reader) 
+here we have two option (service principle and managed identity)  select service principle.
+and select the above create registration.
+In databricks spark.set.config define the information tenant, client, secret ID and about account name.
+Hence the connection established but username, password are visible in the code.
+
+
+
+
+%md --> Allows documentation heading, image etc....
+%sql
+%python
+%scala
+%sh   --> shell script
+%fs dbutils file system 
+
+
+
+Managed vs external tables:
+Managed:
+full managed by databricks (creation, deletion..)
+stored in databricks managed location
+delete both tables metadata and underlying data files from cloud
+Supports an UNDROP TABLE command for a short retention period (e.g., 7 days) to recover a dropped table and its data.
+
+External:
+databricks manages metadata, files need to be managed by user
+data resided in user defined external location (ADLS, S3)
+deletes metadata in databricks,  data files remains in external location.
+recovery from cloud storage manually.
+
+
+Temporary and permenant views:
+temporary view, if session/cluster ends view gone.  create temporary view emp_tmp_vw as select * from emp;
+permenant view: view exist after session/cluster ends.
+
+d/w views and tables:
+view is created under neath of table query.
+
+CTAS (create table as select)
+deep clone and shallow clone:
+deep clone --> metadata and data will be copied.
+shallow --> only metadata, data still point to the version of table you created.
+directly insert into shallow table, it will not reflect into main table.
+
+
+
+version check:
+dev.bronze.emp@v01
+
+
+Delta tables merge and upserts:
+merge into dev.dronze.emp e using dev.dronze.emp_updates u on e.emp_d = u.emp_id when matched then update set e.salary = y.salary 
+when not matched then insert statement
+when not matched by source then delete; (when not matched by source then update statement).
+
+
+Z-ordering:
+let say you have multiple partitions and you have country code in those partitions.
+partition1  IN, USA, AUS
+partition2  AUS, IN, IN 
+partition3  USA, IN, USA
+if you try to filter out the data on country bases then all the partitions need to be scanned and filter it out.
+
+If we use zordering then in the back it will re-partition the on country bases, it will go that particular partition and fetch the data.
+partition1  USA, USA, USA
+partition2  IN, IN, IN 
+partition3  AUS, AUS, AUS.
+
+zordering will do the re-ordering and store in the metadata not in the original location.
+
+optimize or file compaction:
+Combining many small files into fewer large files to improve query performance.
+will be done using create a pipeline and schedule it.
+but in databricks same thing will be done using.
+optimize table_name;
+
+use optimize:
+large batch ingestion, streaming ingestion, incremental writes.
+not use:
+small tables, frequnet updates..
+
+
+Vaccum:
+deletes old files, frees storage and removes unused files.
+
+deletion vectors:
+
+
+Liquid Clustering:
+
+
+pyspark will write each record into a file in the backend multiple files will be created. to avoid this 
+df.coalesce(1).write.parquet("path")
+df.repartition(1).write.parquet("path")   --> now data write into one file
+
+
+Volumes: external location need to be create in ADLS account
+volume is unity catalog objects accessing the data in non-tabular format.
+these are like images, files, libraries....
+
+managed volume:
+drop managed volume, files and metadata will be dropped.
+external volumn:
+only metadata, files still remain same in the location.
+
+
+dbutils.help():
+credentials, data, fs, jobs, library, meta, notebook, preview, secrets, widgets.
+dbutils.fs.help() --> cp, head, is, mkdirs, mv, put, rm
+mount: mount, map, mounts, refeshMounts, unmount, updateMount
+
+dbutils.notebook.help() --> exit, run
+dbutils.secrets.help() --> get, getBytes, list..
+
+
+Compute:
+Access mode: single user, shared
+cluster: multinode, single node
+Databricks runtime version: standard, ML
+standard (15.4 LTS) long time stand LTS
+
+use photon acceleration: databricks engine
+
+workflow - jobs 
+Task level:
+type: notebook, pythons cript, python wheel, SQL, delta live tables pipeline, dbt, JAR, spark submit, run job, if/else condition, for each 
+source: workspace, github
+parameters : add widgets here
+depentdent libraries
+notifications
+retries:
+Duration threshold:   runtime for the jobs.
+ex: if schedule to run and that job should get complete in hours then we can set the threshold.
+if threshold exceed jobs will be terminated.
+
+Job level parameters 
+job level notifications
+job level threshold
+permissions
+schedules & Triggers
+
+
+COPY INTO to load data:
+same file if we run multiple time data will not be duplicated (idempotent)
+support multiple files
+
+
+Auto Loader:
+readStream, writeStream (option we have .trigger(available - True) it will run immediately when file is available.
+df = (spark
+        .readStream   # a streaming dataframe
+        .format("cloudFiles")  # tells Spark to use AutoLoader
+        .option("cloudFiles.format", "json")  # the actual format of out data files. Tells AutoLoader to expect json files
+        .option("cloudFiles.useNotifications",True) # Should AutoLoader use a notification queue
+        .schema(some_custom_schema)  # custom schema of the actual data file
+        .load(f"{actual_data_location}/directory") # location of the actual data file
+    )
+
+in the above .options we can define clientID, clientsecret, tenantid, subscriptionID, connetionstring, resourcegroup.....
+
+
+spark job process 25GB file, how much a cluster configuration is required.
+25GB = 25 * 1024 MB = 25600 MB
+no of partitions = 225600 /128 = 200 
+no of cpu cores = no of partitions = 200
+
+executors:
+as per research for a better performance 2 to 5 cores required.
+
+avg CPU cores for each executor = 4
+total no of executor = 200/4 = 50 
+
+excutor memory:
+executor memory for each core = minimum 4 * parittion size = 4 * 128 = 512 MB
+
+CPU cores for each executor = 4memory for each executor = 4 * 512 = 2 GB
+
+
+total memory required to process 25 GB data?
+total no of executor = 50
+memory for each executor = 2GB
+total memory for all the executor = 50 * 2 = 100GB
+
+driver memory minimum 2 to 4 GB.
+
+
+
+
+Delta live tables:
+it is a declarative ETL framework that simplifies building, managing, and monitoring reliable data pipelines.
+This pipeline itself handle data quality, error handling .....
+which means do the transformation not back end orchestration..
+
+delta live tables is available for only premium account.
+delta live table has three options during pipeline creation core, advance, premium 
+1. core is basic tranformation, no CDC
+2. CDC, no governance, data quality etc...
+3. premium has all the options.
+
+table, view and materialized view.
+
+materialized view:
+peridically refreshed
+
+
+
+Delta live table can be used a source for append only or even truncate this table and source as source.
+If live table is used as source then always data should append it. if truncate the table pipeline will be failed but in databricks.
+we have an option during reading readStream.option("skipChangeCommits", "true")  --> if we enable this option live table can be used in either ways.
+
+
+
+Databricks optimization:
+1. partitioning
+2. file format optimization (convert into delta from parquet or csv, delta is faster).
+3. Z-ordering
+4. Data caching
+5. Broadcast joins
+6. optimize ( file compaction). can be done by pipeline or automatically by enable future.
+7. ADQ
+8. SKEW handling
+9. Repartitioning and coalescing
+10. column pruning and predicate pushdown.
+11. Vaccum
+12. using proper cluster configuration.
+
+
+## Delta lake:
+Delta lake was built on top of data lake storage.
+delta lake is an open storage framework that brings reliability and performance to data lakes.
+key features
+1. schema enforcement rejects writes to a table if the incoming data structure does not match the existing table schema.
+2. time travel / versioning – history
+3. update
+4. delete
+5. merge scd-1 
+6. ACID transactions
+7. schema evolution : automatically adjust its structure.
+8. performance optimizations such as OPTIMIZE, Z-ordering..
+In my databricks projects, i use delta lake for incremental processing, CDC implementations, and maintaining reliable Bronze, Silver and 
+Gold layers in a medallion architecture.
+
+Example:
+
+schema enforcement:
+
+Df=spark.createDataFrame([(1, “rama”, “bangalore”),(2, “Krishna”, “Chennai”),(3, “sai”, “Chennai”)], [“cid”, “cname”, “clocation”])
+Df.show()
+
+Df.write.format(‘parquet’).save(“/FileStore/tables/parquetdata/”). – normal flow floder data
+
+Df.write.format(‘delta’).save(“/FileStore/tables/deltadata/”). –delta data folder
+
+
+
+
+
+Df1=spark.createDataFrame([(1, “rama”, “bangalore”, 8888),(2, “Krishna”, “Chennai”, 9999),(3, “sai”, “Chennai”, 7777)], [“cid”, “cname”, “clocation”, “ccontact”])
+Df.show()
+
+
+Df1.write.mode(“overwrite”).format(“parquet”).save(“/FileStore/tables/parquetdata/”)
+
+Df1.write.mode(“overwrite”).format(‘delta’).save(“/FileStore/tables/deltadata/”)
+Error return: A schema mismatch detected
+
+
+Df1.write.mode(“overwrite”).format(‘delta’).option(“mergeSchema”, True).save(“/FileStore/tables/deltadata/”)
+
+Df1.write.mode(“append”).format(‘delta’).option(“mergeSchema”, True).save(“/FileStore/tables/deltadata/”)
+
+Spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”).show()
+
+Time travel:
+spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, timestampAsOf=”dateofdataload”).show()
+
+
+
+spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, versionAsOf=0).show()
+
+spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, versionAsOf=1).show()
+
+
+
+update delta tables:
+
+from delta.tables import DeltaTable
+dtable=DeltaTable.forpath(spark, “/FileStore/tables/deltadata/”)
+dtable.update(“ccontact is null”, {“ccontact”:”889977”})
+
+dtable.update(“cid=2”, {“cname”:”’rama krishna’”})
+
+delete:
+
+dtable.delete(“cid=2”)
+dtable.delete(“cid in (1,2”)
+
+
+dtable.toDF().show()
+
+*pyspark will not support for update and delete operations
+
+
+
+%sql
+Create table if not exists mydeltatable
+Using delta
+Location “/FileStore/tables/deltadata/”
+
+%sql
+Select * from mydeltatable;
+
+
+.crc and .json are commits 
+
+
+
+Df.write.format(‘delta’).save(“/FileStore/tables/scdtarget/”)
+
+
+SCD-1:
+
+from delta.tables import DeltaTable
+targetdata=DeltaTable.forpath(spark, “/FileStore/tables/scdtarget/”)
+
+
+df11=df.spark.createDataFrame([(1, ‘ramu’, ‘pune’),(2, ‘srinu’, ‘delhi’)], [‘cid’, ‘cname’, ‘clocation’])
+
+df11.write.format(‘delta’).save(“/FileStore/tables/sourcedata”)
+
+updatedata=spark.read.format(‘delta’).load(“/FileStore/tables/sourcedata”)
+updatedata.show()
+
+
+from delta.tables import DeltaTable
+targetdata=DeltaTable.forpath(spark, “/FileStore/tables/scdtarget/”)
+
+targetdata.alias(“a”).merge(updatedata.alias(“b”), col(“a.cid”)==col(“b.cid”)).
+whenMatchedupdate(set={“clocation”:”b.clocation”}).whenNotMatchedInsert(values={“cid”:”b.cid”, “cname”:”b.cname”, “clocation”:”b.clocation”}).execute()
+targetdata.toDF().show()
+
+
+
+targetdata.vacuum(200)
+
+24*7=168 means store history for last 7 days
+Long term data will not be preferred here
+
+By using vaccum we will define how time to store history.
+
+
+
+
+
+OOM:
+Scenario-1: Large Partition
+
+Suppose:
+1 TB File processing required 100 Partitions
+
+Each partition:
+1 TB / 100 = 10 GB
+
+Executor memory: 8 GB
+
+When Spark tries to process a 10 GB partition:
+Need 10 GB
+Available 8 GB
+
+Result:
+Executor OOM
+
+
+Scenario 2: Data Skew
+
+Example:
+Customer A = 90% of records
+Other customers = 10%
+
+During join/groupBy:
+
+Partition 1 = 50 GB
+Partition 2 = 100 MB
+Partition 3 = 200 MB
+
+Executor handling:
+50 GB partition
+
+runs out of memory.
+
+Result:
+Executor OOM
+
+
+
+Scenario 3: Large Shuffle
+
+Operations like:
+groupBy()
+join()
+distinct()
+orderBy()   cause shuffle.
+
+Example:
+2 TB data
+     ↓
+groupBy(customer_id)
+
+Spark must:
+Move data between executors
+Sort data
+Aggregate data
+
+Intermediate data may become larger than available memory.
+
+Result:
+Spill to disk
+Then OOM
+
+
+Scenario 5: Cache/Persist
+
+Example:
+df.cache()
+
+Data:
+100 GB
+
+Cluster memory:
+40 GB
+
+Spark tries to keep data in memory.
+Memory fills up.
+
+Result:
+Executor OOM
+
+
+## Shuffle:
+What is Shuffling in Spark?
+
+Shuffling is the process of moving data across executors/partitions so that Spark can perform operations such as joins, aggregations, sorting, and distinct.
+
+It is one of the most expensive operations in Spark because it involves:
+
+Network I/O
+Disk I/O
+Serialization/Deserialization
+Sorting
+
+
+Simple Example
+
+Suppose you have data:
+
+Partition 1                Partition 2
+
+(A,100)                    (A,200)
+(B,300)                    (B,400)
+(C,500)                    (C,600)
+
+Now run:
+
+df.groupBy("customer_id").sum("amount")
+
+Spark needs all records for the same customer together.
+
+
+After shuffle:
+Partition 1
+A,100
+A,200
+
+Partition 2
+B,300
+B,400
+
+Partition 3
+C,500
+C,600
+
+Spark moved data across executors. This movement is called shuffle.
+
+
+Operations That Cause Shuffle:
+df.groupBy("customer_id").sum()
+df1.join(df2, "customer_id")
+df.distinct()
+df.dropDuplicates()
+5. orderBy / sort
+df.orderBy("amount")
+df.repartition(100)
+
+
+
+Real Interview Example
+
+Suppose:
+Fact Table = 1 TB, Dimension Table = 500 GB
+
+Join:
+fact.join(dim, "customer_id")
+
+Spark may shuffle:
+1.5 TB+
+across executors.
+
+Result:
+Slow job
+High memory usage
+Possible OOM
+
+
+
+How to Reduce Shuffle:
+Broadcast Join
+Filter Early
+Select Required Columns
+Proper Partitioning
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Kafka: distributed event streaming platform designed to ingest, store, and process high-volume, real-time data feeds
+producer An application that sends message/data to kafka
+message size is small to medium
+
+consumer: An application that receives data from kafka
+
+Broker:  kafka server (exchange message from producer to consumer)
+
+Cluster: A group of computers sharing workload for a common purpose.
+
+Topic:  topics are the categories used to organize messages.
+		Each topic has a name that is unique across the entire Kafka cluster.
+
+Partitions: kafka break topic into partitions.  (how many partitions decided by developer, every partition in a single machine)
+
+Offset: position of a message in a partition.
+
+Consumer groups: set of consumers sharing the work
+
+
+Fault Tolerance:
+
+
+
+Replication factor:
+rf = 3 means three copies
+rf defined at topic.
+
+Leader & Follower:
+Leader of partition p1
+p2,p3 are followers, copy from p1.
+
+
+server.properties   first broker
+server1.properites  second broker
+server2.properties  third broker

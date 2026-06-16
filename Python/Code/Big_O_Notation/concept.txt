@@ -1,0 +1,21 @@
+Big O Notation:
+
+O(1)
+O(log n)
+O(n)
+O(n log n)
+O(n^2)
+O(n^3)
+O(2n)
+O(n!)
+
+
+Good for performance: O(1), O(log n)
+Avergage: O(n), O(n log n)
+Bad: O(n^2), O(n^3), O(2n), O(n!)
+
+Time Complexity and Space Complexity:
+Time Complexity: Time taken to execute the program.
+Space COmplexity: Memory take to execute the program.
+
+n = input size 

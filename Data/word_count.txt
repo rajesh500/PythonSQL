@@ -1,0 +1,5 @@
+Emma is a basketball player who was born on June 17, 1993. 
+She played 112 matches with a scoring average of 26.12 points per game. Her weight is 51 kg.
+python is good and complex programming langugae.
+python is used by most of companies.
+python is super

@@ -1,0 +1,642 @@
+
+Azure storage redundancy:
+LRS (Locally redundant storage):
+with in the datacenter 3 copies will be maintained.
+Low cost
+No protection against datacenter failure
+
+ZRS (Zone redudant storage):
+Data will store in 3 zones with in the region.
+Zone1, Zone2, Zone3.
+For any region zone1 is failed, zone2 and 3 will become available.
+
+All zones are failed with disaster region.
+Entire datacenter based on the zone will not be available.
+
+
+GRS (Geo-Redundant Storage):
+data store in primary and secondary regions.
+
+
+RA-GRS (Read Access Geo-Redundant Storage):
+Same as GRS, but:
+
+Primary Region
+      ↓
+Secondary Region
+      ↓
+Read Access Available
+You can read from the secondary region even if the primary is healthy.
+
+
+
+GZRS (Geo-Zone Redundant Storage)
+Best protection.
+
+Primary Region
+   ├─ Zone 1
+   ├─ Zone 2
+   └─ Zone 3
+          ↓
+Secondary Region
+
+Combines:
+ZRS (zone protection)
+GRS (region protection)
+
+
+
+
+Blob vs ADLS:
+Azure Blob Storage is a flat-namespace object store designed for general-purpose, unstructured data. Azure Data Lake Storage (ADLS) Gen2 is built on top of Blob Storage but adds a hierarchical namespace
+
+
+
+source:
+Allow schema drift: if source type changes column freqently it allows all fields to flow through transformation  to the sink. 
+Infer drifted column types: auto-detect column data types.
+
+
+Sink:
+copy behaviour:
+Preserve Hierarchy:
+
+Maintains the same folder structure as the source.
+
+Source:
+/input/2026/01/file1.csv
+/input/2026/02/file2.csv
+Sink:
+/output/2026/01/file1.csv
+/output/2026/02/file2.csv
+
+
+Flatten Hierarchy:
+Copies all files into a single folder.
+
+Source:
+/input/2026/01/file1.csv
+/input/2026/02/file2.csv
+Sink:
+/output/file1.csv
+/output/file2.csv
+
+
+Merge Files:
+Combines multiple source files into a single output file.
+
+Source:
+file1.csv
+file2.csv
+file3.csv
+
+Sink:
+merged.csv
+
+
+Data Flow:
+we can define the compute size:
+small, meduim, large, custom (general, memory optimized).
+
+general: 
+Balanced CPU and memory.
+best for simple transformation, small to medium joins and data sizes in GB.
+
+Memory optimized:
+More RAM to cores
+best for large joins, aggregations, GBs to TBs, complex logic...
+
+A Flowlet in Azure Data Factory (ADF) Mapping Data Flows is a reusable set of transformations that can be used across multiple data flows.
+
+
+
+Watermark vs Tumbling window in incremental load:
+Using both incremental load should be process, thier is no difference in the process, without missing any record.
+Here Watermark design should be controlled by the developer.
+Tumbling window is managed the adf.
+
+Let say:
+day1
+day2 
+day3
+
+watermark process each day and hold the until what date i run. the next should start from their and watermark will update again.
+If any failure happen watermark still hold the old value and thier onwards next run will happen even the run happened on next.
+data won't get skipped.
+
+If you want to run for the back dates just update the watermark and run it.
+
+
+Tumbling window process one hourly bases. what ever the data come in that window it will process.
+If any failure happen it will not process the next interval until the failure is fixed.
+it won't skip any data.
+
+
+Both are doing the same thing on the difference is control by us or ADF.
+second is if incremental at database level good approach is using water.
+If it is file based tumbling window is good.
+
+
+Late ariving date handling is diffcult or complex using tumbling window.
+let 11-12 interval batch is running exactly after it start a piece of data belong 11-12 window is came into table with timestamp of 12. this data will be get skipped.
+in order to solve these kind of problem.
+
+some delay will be added to the window
+(5 or 10 minutes) still their is a chance of missing data here as well.
+
+we should go with watermark timestamp for good design and to overcome this problem
+
+
+
+
+system variables:
+pipeline info, adf name, pipeline name, run id, time......
+
+
+
+select * from person where createddate > '@{activity('LkpOldWaterMarkTimestamp').output.firstRow.lastmodifiedtime}' and 
+createddate <= '@{activity('LkpNewWaterMarkTimestamp').output.firstRow.NewWaterMarkValue}'
+
+
+
+
+
+CDC vs SCD:
+I don't need CDC to implement SCD2. SCD2 and CDC solve different problems. SCD2 maintains historical records in the target. CDC identifies changed records in the source. If the source volume is manageable, I can detect changes using hash comparison and implement SCD2 without CDC. CDC becomes valuable when source tables are very large because it avoids scanning and comparing the entire dataset and provides only the changed rows.
+
+
+
+Databricks tab in ADF:
+Notebook: ETL code(bussines logic)
+python (automated script, API calls, File Handling)
+jar (create entire etl flow in the jar)
+job (databricks job is schdedule in the adf).
+
+
+Real Production Example:
+
+Suppose you're building an Azure Data Lake solution:
+
+SQL Server
+    |
+    v
+ADF Copy Activity
+    |
+    v
+ADLS Bronze
+    |
+    v
+Databricks Notebook
+    |
+    v
+Silver Layer
+    |
+    v
+Databricks Notebook
+    |
+    v
+Gold Layer
+    |
+    v
+Synapse / Power BI
+
+Here:
+
+ADF = Orchestration
+Databricks Notebook = Transformation
+
+
+
+
+
+DataFlow running slow:
+1. Look into Azure IR settings for Vcores
+	Vcores is nothing but compute, try to increas the core and check the run time.
+2. Check the execution of Dataflow to find out if the issue is on source/activity/destintion.
+3. Check the IR region.
+	Make sure everything created in same region.
+	If services are in different reasons, processing will be slow.
+4. check if general purpose or memory optimized compute type is used?
+5. Check with MS if any issue going on from their end?
+   If pipeline is working fine all of sudden it is taking more time to run 1. first check from your end on recent changes
+   like code or confiuration ..... If you couldn't find any thing immedialtey raise a ticket with MS. If the issue is from their end they will return additional cost money.
+
+
+
+
+Data Flow Running Slow – Troubleshooting Steps:
+1. Understand the problem:
+Is the Data Flow always slow or only recently?
+Which transformation is taking time?
+Has data volume increased?
+Did any code/configuration change recently?
+
+2. Check ADF Monitoring 
+cluster startup time
+source read time
+transformation time
+sink write time
+
+3. check data volume:
+has file size increased?
+has partition count changed?
+
+4. check source performance
+is source query slow?
+missing indexes
+full table scans
+
+5.check partitioning
+Single partition
+Hash partition
+Round robin
+Dynamic partitioning
+
+6. check data skew:
+1 customerID = 90% data
+one executor processes most data
+
+7. analyze join transformation
+inner join
+left
+right 
+full
+broadcast join
+
+8.check looup transformation
+look table should be small size
+
+9. derviced columns has any expensive operations
+regex
+nested if
+string manipulations
+complex expressions 
+
+10. check aggregate transformation for shuffling 
+groupby
+count distinct
+window functions
+
+11. sink performance
+
+12. check IR
+	general purpose
+	memory optimized
+
+13. check recent changes
+
+
+
+
+DMS:
+In the context of Microsoft Azure, DMA stands for Data Migration Assistant. It is a free tool used to evaluate on-premises SQL Server databases and determine their readiness for migration to Azure. 
+
+What Does DMA Do?
+Before you move your databases to the cloud, DMA performs several vital checks:
+Compatibility Analysis: It identifies any blockers, deprecated features, or unsupported code that might prevent a smooth migration to target environments like Azure SQL Database or Azure VMs.
+Feature Recommendations: It suggests improvements for performance and reliability in your new target environment.
+Schema & Data Transfer: It assists in moving your database schema, data, and uncontained objects (like logins and agent jobs) to the cloud
+
+
+SSMS: SQL Server Management Studio (this is IDE using this also we can migrate on-prem database to Azure sql database)
+
+
+
+Types of Databases in Azure:
+Azure Database Services – Purpose & Use Cases
+Service										Purpose										Typical Use Case
+Azure SQL Database				Fully managed SQL Server database					OLTP applications, ERP, CRM
+Azure SQL Database Hyperscale	Very large SQL databases (100 TB+)					Large SaaS applications, huge transactional systems
+Azure Database for PostgreSQL	Open-source relational database						Web apps, GIS, analytics applications
+Azure Database for MySQL		Open-source relational database						WordPress, e-commerce, web applications
+Azure Cosmos DB					Globally distributed NoSQL database					IoT, gaming, real-time applications
+Azure HorizonDB					Distributed PostgreSQL at scale						Multi-tenant SaaS and distributed OLTP workloads
+Azure SQL Managed Instance		Lift-and-shift SQL Server migration					Existing SQL Server applications
+SQL Server on 					Full SQL Server control								Legacy applications requiring OS/database control
+Azure Virtual Machines
+Azure DocumentDB				JSON document database								Legacy Cosmos DB references
+Oracle Database@Azure			Oracle workloads on Azure							Oracle ERP, Oracle financial systems
+Azure Managed Instance for 		Wide-column NoSQL database							Time-series, IoT, telecom systems
+Apache Cassandra
+MongoDB Atlas on Azure			JSON document database								Mobile apps, product catalogs
+Azure Managed Redis				In-memory cache										Session storage, caching, low-latency reads
+
+
+
+Migration from on-premise to Azure cloud:
+When migrating data from On-Prem SQL Server to Azure, there are multiple approaches. The choice depends on data size, downtime requirements, frequency, and target system.
+1. Azure data factory:   Most common 
+on-prem SQL server
+		|
+	  SHIR
+	  	|
+Copy Acitivty(ADF)
+		|
+ADLS / Azure SQL ...
+
+
+Use Cases
+One-time migration
+Incremental loads
+Scheduled ETL pipelines
+Advantages
+Low-code
+Parallel copy
+Built-in monitoring
+
+
+2. Azure data migration service (DMS)
+Microsoft's dedicated migration service.
+
+SQL Server
+    |
+    v
+Azure DMS
+    |
+    v
+Azure SQL Database
+
+Use Cases
+Database migration
+Minimal downtime migrations
+Lift-and-shift
+
+Advantages
+Schema + data migration
+Online migrations supported
+
+3. Backup and Restore
+
+For large databases.
+
+SQL Server Backup (.bak)
+          |
+          v
+Azure Blob Storage
+          |
+          v
+Azure SQL Managed Instance
+Use Cases
+Moving entire databases
+SQL Managed Instance migrations
+Advantages
+Fast for large databases
+Preserves schema, indexes, permissions
+
+
+4. BCP (Bulk Copy Program)
+
+Command-line bulk export/import.
+
+bcp Customer out customer.csv -c -T
+Use Cases
+Table-level migration
+Very large tables
+Advantages
+High performance
+Simple
+
+5. Databricks
+
+For large-scale migrations and transformations.
+
+SQL Server
+     |
+     v
+Databricks
+     |
+     v
+ADLS / Synapse
+Use Cases
+TB/PB scale data
+Complex transformations
+Advantages
+Distributed processing
+Spark-based
+
+
+6. Files 
+
+7. CDC-Based Migration
+Initial Full Load
+       +
+CDC Changes
+Use Cases
+Large production systems
+Minimal downtime
+Advantages
+Only changed records move
+Supports inserts, updates, deletes
+
+
+Common Issues During On-Prem SQL Server to Azure Migration
+1. Slow network throughput between on-prem and Azure.   Copy activity running for days,   Low transfer speed.
+2. Firewall & Connectivity Issues
+	Problem
+	ADF cannot connect to on-prem SQL Server.
+
+3. Data Type Mismatches
+4. Data Truncation   (data type size truncation ex: onpremise varchar(500), target varchar(100))
+5. Primary Key / Duplicate Data Issues
+6. Referential Integrity Issues
+7. Large Table Performance Issues
+8. Schema Compatibility Issues
+9. Security & Permission Issues
+10. Data Validation Issues
+
+
+*** Database to Database   DMS is good option
+On-prem to ADLS  -- ADF copy activity
+
+
+50TB(main DB we are touching it only from backup) tooks 6 to 7 days using DMS full load.
+CDC took 2 to 3 weeks of time.
+
+Once migration is completed, all the applications will point to use cloud DB, for any reason if one of the applications is not working with new DB changes then all 
+application need to revert this DB changes and point to on-prem DB.
+
+Migration:
+Large tables need to migrate it first and small tables.
+Replicate the exact DB from on-prem to cloud same as DB, schema, tables, constraints, index...
+drop the constrains once load is completed then add the constraints again....
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Triggers are scheduling:
+Scheduled: Time-based trigger
+File Arrival: when a new file arrive job will triggered and monitored unity catalog external.
+Table update: table has updated then trigger
+continuous: Infinite loop.
+None: Manual run.
+
+
+
+Email triggering is also can be done from databricks itself.
+Email, team, slack....
+
+
+Delta live table trigger:
+Triggered: when data available triggers otherwise shutdown. trigger interval seconds, minutes, hours, daily.
+continuous: runs continuously until manully stops.
+
+
+
+
+
+Tool					Purpose							Where it runs						Best for
+Databricks Jobs			Run Databricks workloads		Inside Databricks					Spark/Notebook pipelines
+ADF	Data 				integration & orchestration		Azure cloud							End-to-end ETL pipelines
+Airflow					Workflow orchestration			Anywhere (self-managed/cloud)		Complex DAG-based workflows
+
+
+When to Use What?
+Use Databricks Jobs when:
+You are running Spark notebooks
+ETL is fully inside Databricks
+You want simple scheduling
+
+Use ADF when:
+You need data movement (copy activity)
+You integrate multiple systems (SQL, APIs, Storage)
+You want low-code pipelines
+
+Use Airflow when:
+You need complex DAG logic
+You have multi-cloud systems
+You need full programmatic control
+
+
+
+
+Real-World Usage Pattern (Very Important)
+
+In production, companies often use ALL THREE together:
+ADF (Orchestration Layer)
+        ↓
+Databricks Jobs (Processing Layer)
+        ↓
+Delta Lake / SQL
+        ↓
+Airflow (Advanced workflow / cross-system orchestration)
+
+
+
+
+
+
+YAML:
+Define pipeline and workflow steps:
+Once a developer deploy a code to Azure Devops Repos.
+
+Azure Devops teams will run pipeline to deploy code from one enivornment to another.
+
+Dev - QA - UAT - Prod.
+
+YAML file will have list of steps to deploy the code.
+YAML is a language/format used to define CI/CD pipelines.
+
+
+YAML is commonly used to define CI/CD pipelines as code. In data engineering projects, it helps automate the deployment of Databricks notebooks, Azure Data Factory pipelines, Azure Functions, and Terraform infrastructure. While Data Engineers are not always responsible for full DevOps ownership, understanding YAML is important because modern data platforms rely heavily on automated deployments and environment promotion processes.
+
+
+
+Terraform Applies to Azure as well.
+
+
+
+
+
+
+Azure Functions = writing a program (custom logic)
+Logic Apps = building a flowchart (drag & drop workflow)
+
+
+Azure Functions						Azure Logic Apps
+Code-based execution				No-code / low-code workflow
+Runs custom logic					Uses prebuilt connectors
+Developer-focused					Business process automation
+More flexible						Easier to build
+
+
+Azure Functions
+Write code (C#, Python, Java, etc.)
+Full control over logic
+
+Example:
+def main(req):
+    return "Hello World"
+
+
+Logic Apps
+Visual designer (no code)
+Uses connectors
+
+Example:
+When file arrives → send email → call API → update SQL
+
+
+Use Cases
+Azure Functions (best for):
+Complex transformations
+Data validation
+Custom APIs
+Trigger Databricks jobs
+
+
+Event processing logic
+Logic Apps (best for):
+Workflow automation
+Notifications (email, Teams)
+SaaS integrations (Salesforce, Outlook, etc.)
+Simple orchestration
+
+
+Pricing Model
+Azure Functions
+Pay per execution
+Based on compute time
+
+Logic Apps
+Pay per action (step in workflow)
+
+
+
+
+Event GRID:
+Azure Event Grid is an event routing service used to react to events such as file uploads, resource changes, or custom application events. It is commonly used to trigger Azure Functions, Logic Apps, or ADF pipelines. Event Grid is used for event notifications.
+
+
+Event Hub:
+Azure Event Hubs is a highly scalable event streaming platform designed to ingest and process millions of events per second. whereas Event Hub is used for high-throughput real-time streaming and analytics workloads.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

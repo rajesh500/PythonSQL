@@ -1,0 +1,107 @@
+
+RAC Architecture: (Retrieval - Argumented Generation)
+C:\Users\rjakkula\Documents\DE2\DE\visualstudio\PythonSQL\RAG\1.png
+
+LLM (large language model):
+
+Ex:
+LLM model built till July 2023, when a use LLM model it will get response till July 2023 because this model is trained till date, current is not trained.
+I/P ----> LLM ----> o/p
+
+Retrieval from vector database.
+Argumented means {
+    text: increase b =y 10%,
+    report: 2023 report
+}
+Generation means generate summarized report.
+
+
+Agentic AI systems:
+RAG systems
+
+
+RAG     vs     Fine Tuning    Vs Prompt Engineering.
+C:\Users\rjakkula\Documents\DE2\DE\visualstudio\PythonSQL\RAG\2.png
+
+
+Prompt:
+---> Base LLM ---> Customized output.
+question and realted output return.
+
+1. specific instructions
+2. structured prompt with clear(context)
+3. Model remain unchanged
+
+pro's:
+1. No technical expertise need
+2. Instant results
+3. no training cost(free)
+4.works with any LLM.
+
+con's:
+1. limited by models base knowledge
+2. Inconsistent results
+3. token limit restrict complexity
+4. can't add new knowledge
+
+
+Best for:
+1. small scale application
+2. generic purpose task
+3. quick prototype
+
+
+Fine Tuning:?
+
+
+RAG:
+
+         Argument response
+                 |
+                 |
+user query --->  +  <---  Base LLM
+                 ^
+                 |
+                 |
+            Retrieved docs  (knowledge)
+
+1. store document in vector DB
+2. retrieve relevent docs for each query
+3. LLM generates answer from context.
+
+
+Pro's:
+1. Always up to date info
+2. No traninig required
+3. cost-effective
+4. Accuracy is high
+5. can hanlde private/properity data.
+
+Con's
+1. Infrastructure setup
+2. Retrieval quality affects results
+3. Context window limitation
+
+
+
+
+
+
+LangChain:
+LangChain is a framework designed to simplify the creation of applications using LLM.
+
+Why use LangChain:
+It makes it easy to add and replace components that bring advanced capabilites like agency, knowledge integration, memory etc..
+
+LLM models
+chat models
+
+
+
+LLM
+Agent/Agents
+API data cutoff date.
+text to vector --> using embedded models
+RAG (document) (static)
+vector DB
+MCP (Dynamic)

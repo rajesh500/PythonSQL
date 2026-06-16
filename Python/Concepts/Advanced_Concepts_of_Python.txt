@@ -1,0 +1,2831 @@
+Advanced Concepts of Python:
+1. Exception Handling
+2. Logging Module
+3. Assertions
+4. File Handling
+5. OOPs
+6. Regular Expressions
+7. Multithreading
+8. Python Data base Connectivity (PDBC)
+9. Decorators
+10. Generators
+11. Introduction to Web Application Development with Django
+
+OOPS topics:
+
+polymorphism:
+Duck typing philosophy of python
+overloading
+      operator Overloading
+      method Overloading
+      Constructor overloading
+
+overriding
+Method overriding
+constructor overriding
+
+
+data hiding 
+abstraction
+abstract method
+interface
+abstract class
+
+
+Object Oriented Programming (OOPs)
+===========================
+
+class
+plan acts as Blue print/Template for the building.
+plan is nothing but class
+
+The building constructed based on the plan ==> objects
+The physical existence of a class is nothing but object.
+
+one class is ready ==> multiple objects
+
+class is blue print for object
+object is physical existence of a class
+physical instance of a class
+
+class    object ===> one to many
+
+object   reference variables ====> one to one | one to many
+ Ex-1:
+
+class Employee:
+    '''doc string(description)'''
+    def __init__(self, eno, ename, esal, eaddr): ==> constructor
+        self.eno=eno
+        self.ename=ename
+        self.esal=esal
+        self.eaddr=eaddr
+    def info(self):   ==> taking input self only(taking only one argument), this is called instance method
+        print('*'*20)
+        print('Emplyee Number:', self.eno)
+        print('Emplyee Name:', self.ename)
+        print('Emplyee Sal:', self.esal)
+        print('Emplyee Add:', self.eaddr)
+
+e1=Employee(100, 'Durga', '5000', 'Tempe')
+e1=Employee(100, ‘10000’, ‘Durga’, 'Tempe')
+e2=Employee(200, 'Pavan', '10000', 'Scott')
+e1.info()
+e2.info()            
+ passing variable to self argument is python virtual machine, we not required to provide explicitly
+out:
+********************
+('Emplyee Number:', 100)
+('Emplyee Name:', 'Durga')
+('Emplyee Sal:', '5000')
+('Emplyee Add:', 'Tempe')
+********************
+('Emplyee Number:', 200)
+('Emplyee Name:', 'Pavan')
+('Emplyee Sal:', '10000')
+('Emplyee Add:', 'Scott')
+
+
+Ex-1:
+class Student:
+    '''This class is demo purpose only'''
+#documentation string for your class
+print(Student.__doc__)    
+
+out:
+This class is demo purpose only
+
+Note:
+Here__doc__ to know what in the class
+—doc— :#documentation string for your class
+
+Another way of accessing what inside the class is help(Student)
+
+self variable:
+if you want to refer current object in class self is need, above are the example of self.
+
+self is a reference variable which is always pointing to current object. within the python class to refer current object.
+
+self is an implicit variable which is alway provided by PVM
+self is always pointing to current object
+For every constructor and instance method the first argument should be self itself
+
+Ex-1:
+class Student:
+    ‘’’This class Developer by Rajesh’’’
+def —init—(self)”.  ==> constructor.
+print(id(self))
+
+s=student()
+print(id(s))
+
+out: 
+382112
+382112
+
+**e1=Employee(100, 'Durga', '5000', 'Tempe’), when calling this method automatically constructor is called.
+
+Assigning value to self in the constructor is pvm responsible.
+
+** The first argument for instance and constructor is self compulsory.
+ 
+Ex-2:
+class Student:
+    '''This dev'''
+    def __init__(self, eno, ename, esal, eaddr):
+        #==> constructor
+        self.eno=eno
+        self.ename=ename
+        self.esal=esal
+        self.eaddr=eaddr
+        #print(id(self))
+    def info(self):
+        #  ==> taking input self only(taking only one argument), this is called instance method
+        print('*'*20)
+        print('Emplyee Number:', self.eno)
+        print('Emplyee Name:', self.ename)
+        print('Emplyee Sal:', self.esal)
+        print('Emplyee Add:', self.eaddr)
+        #print(id(self))
+
+#e1=Student(100, 'Durga', '5000', 'Tempe')
+e2=Student(200, '10000', 'Durga', 'Scott’).  ==> Here input order(typing order) is not necessary 
+what ever the value you given python is going to take it.
+because python is dynamically programming.
+
+#e1.info()
+e2.info()
+#e1.info()
+#e1.__init__(100, 'Durga', '5000', 'Tempe')
+
+out:
+********************
+('Emplyee Number:', 200)
+('Emplyee Name:', '10000')
+('Emplyee Sal:', 'Durga')
+('Emplyee Add:', 'Scott')
+
+In construct and instance method we can take any name instead of self, but recommended to use self only.
+
+Constructor:
+=========
+The name should be always: __init__()
+Whenever we are creating object constructor will be executed automatically and we are not required to call explicitly
+The main objective is: to declare and initialise  instance variables
+For every object constructor will be executed only once. 
+
+Constructor is a special method in python.
+constructor take at-least one argument self.
+If your not writing any constructor, python itself provide default constructor.
+
+Printing constructor:
+class Test:
+    def __init__(self):
+        print("Construction Execution")
+        
+t1=Test()        
+
+out:
+Construction Execution
+ 
+class Test:
+    def __init__(self):
+        print("no-arg")
+    def __init__(self,x):
+         print('one-arg')
+        
+t1=Test(20)        
+out:
+one-arg
+
+In a class we can have multiple constructor, but python will consider only last constructor.
+
+Ex-2:
+class Student:
+    def __init__(self,name,rollno):
+        print("construction execution...")
+        self.name=name
+        self.rollno=rollno
+        print(id(self.name))
+    def display(self):
+        print('method execution ....')
+        print(self.name)
+        print(self.rollno)
+        print(id(self.name))
+        
+t1=Student('durga',20)
+t1.display()
+
+
+out:
+4405422048
+method execution ....
+durga
+20
+4405422048
+
+
+Difference between Method and Constructor
+Method:
+1. The name can be anything 
+2. method will be executed if we call
+3. per object method can be called any no of times
+4. business logic
+
+
+constructor:
+1.should be __init__()
+2.will be executed automatically if we are creating object
+3. per object only once
+4. to declare and initialize instance variable
+
+
+Types of variables:
+Instance variable
+static variables
+local variables
+
+Instance variable:
+3.the variable which are define with self are instance variable
+ex-1:
+self.name=x
+self.rollno=y
+here x y are not instance variables.
+1.if the value of the variable varied form object to object
+2.for every object a separate copy of instance variable is created
+
+instance variable and static variable
+instance variable are object level and for every object separate copy will be maintained or created
+static variable are class level and for every object same copy will be created and access all the other variable with in the class.
+
+Ex-1:
+class Student:
+    cname="Durgasoft”.  ==> static variable
+    def __init__(self,name,rollno):
+        print("construction execution...")
+        self.name=name
+        self.rollno=rollno
+        print(id(self.name))
+
+local variable:
+variable which is define with in the method for temporary purpose to hold input provide values and this variable need too used with in the method only.
+
+Global variable and local variable and these variable are different 
+
+global and local are functional python 
+these variable are OOPs
+
+Types of Methods
+instance methods
+instance method will call only object reference, not object class(object class= class name(Student))
+class methods
+static methods
+this method never going to use instance and static variables.
+
+
+class Method:
+class Student:
+    cname='DURGASOFT'
+    constructor:
+    instance method:
+    @classmethod is mandatory by mentioning this decorator we will know it is class level method    
+    def getCollegeName(cls) ---> this is class level method, cls you can mention anything you need
+    print('College Name:',cls.cname)
+
+Ex-1:
+class Student:
+    cname="Durgasoft"
+    def __init__(self,x,y)
+        #print("construction execution...")
+        self.x=x
+        self.y=y
+        #print(id(self.name))
+    def display(self):
+        #print('method execution ....')
+        print(self.x)
+        print(self.y)
+        #print(id(self.name))
+
+    @classmethod    
+    def getCollegeName(x):
+        print('College Name:', x.cname)
+        
+t1=Student('durga',20)
+t1.display()
+Student.getCollegeName()
+
+
+
+out:
+durga
+20
+College name: Durgasoft
+
+
+static methods:
+ex-1:
+class Student:
+    cname="Durgasoft"
+    def __init__(self,x,y):
+        self.x=x
+        self.y=y
+    def display(self):
+        print(self.x)
+        print(self.y)
+        
+
+    @classmethod    
+    def getCollegeName(x):
+        print('College Name:', x.cname)
+
+    # This is the static method
+    #static method decoration is not mandatory, if you keep decoration then you can call that
+     method with object reference(means t1=Student('durga',20), t1.findAverage())
+    # If you remove decoration then you need to call with class name(ex-1: Student.findAverage()).
+    @staticmethod 
+    def findAverage(x,y):
+        print('Average:', (x+y)/2)
+        
+t1=Student(10,20)
+t1.findAverage(10,20)
+#t1.display()
+#Student.getCollegeName()
+
+
+out:
+('Average:', 15)
+
+Note:
+Here display() is instance method
+getCollegeName() is class method
+findAverage() is static method 
+
+instance variable:
+class Student:
+    def __init__(self,name,x):
+        #self.name and self.x is the instance variable
+        self.name=name
+        self.x=y
+    def info(self):
+        #third variable declaration in instance method
+        self.marks=60
+        # here x is local variable because x is not defined with self
+        # if you defined with self then it becomes instance variable
+        x=10 
+        
+               
+s1=Student('Durga', 100)
+s1.info(10, 20)
+# third way of defining instance variable, if this instance variable is already available
+# value get replace if variable is not available it is going to created.
+s1.age=24
+print(s1.__dict__)
+
+s2=Student('Pavan', 102)
+s2.wife='Renu'
+print(s2.__dict__)
+#t1.display()
+#Student.getCollegeName()
+
+
+where we have to declare instance variables:
+1. inside constructor by using self
+2. Inside instance methods by using self
+3. From outside of the class by using object reference
+
+how to access instance variables:
+1. within the class by using self
+2. from outside of the class by using object reference 
+
+
+class Student:
+    def __init__(self,name,x):
+        self.name=name
+        self.x=y
+    def display(self):
+        print('Hello My name is:', self.name)
+        
+               
+s=Student('Durga', 100)
+s.display()
+print(s.name, s.x)
+
+out:
+('Hello My name is:', 'Durga')
+('Durga', 100)
+
+How to delete instance variables:
+del self.variable_name  ==> with in the class
+del object reference.variable_name ==> out side of class
+
+Ex-2:
+class Test:
+    def __init__(self):
+        self.a=10
+        self.b=20
+        self.c=30
+    def delete(self):
+        del self.b
+        del self.c
+        # here self is point to variable and t1 also pointing to variable if you call
+        # del self this self get deleted but variable not get deleted.
+        del self 
+        
+t1=Test()
+t1.delete()
+del t1.a #deleting from instance variable from out side class
+del t1 total t1 object will be gone.
+print(t1.__dict__)
+
+out:
+{'a': 10}
+{}
+
+Ex-3:
+
+class Test:
+    def __init__(self):
+        self.a=10
+        self.b=20
+        self.c=30
+        
+t1=Test()
+t2=Test()
+del t1.a
+del t2.b
+print(t1.__dict__)
+print(t2.__dict__)
+
+out:
+{'c': 30, 'b': 20}
+{'a': 10, 'c': 30}
+
+Note:
+t1 has 3instance variable and t2 has three instance variable which are different
+if a instance variable get deleted from t1  it will not delete from t2 
+same scenario with t2 also.
+
+ex-3:
+class Test:
+    def __init__(self):
+        self.a=10
+        self.b=20
+
+        
+t1=Test()
+t2=Test()
+t1.a=888
+t1.b=999
+print(t1.a,t1.b)
+print(t2.a,t2.b)
+
+out:
+(888, 999)
+(10, 20)
+
+static variable:
+
+what are various places are there to declare static variables?
+================================================
+1.within the class directly but from outside of any method
+2.Inside constructor by using classname
+3.Inside instance method by using classname
+4.Inside class method by using cls variable or classname
+5.Inside static method by using classname
+6.From outside of class by using classname
+
+class Test:
+    a=10 #1point
+    def __init__(self):
+        Test.b=20 # 2point
+    def m1(self):
+        Test.c=30 # 3point
+        
+    @classmethod
+    def m2(x):
+        x.d=40  # 4point
+        Test.e=50 # 4point
+    @staticmethod
+    def m3():
+         Test.f=60  # 5point
+
+Test.g=70 #point 6
+t=Test()
+t.m1()
+# here why we did n't use classname directly because when your calling instance method
+#definitely we should call with object reference only
+t.m2() or Test.m2()
+t.m3()or Test.m3()
+print(Test.__dict__))
+# here why we did n't use classname directly because when your calling instance method
+#definately we should call with object refernce only
+t.m2() or Test.m2()
+t.m3()or Test.m3()
+print(Test.__dict__)
+
+How to access static variables:
+========================
+we can access static variables either by classname or by object reference
+
+within the class:
+    -------------
+    classname,self,cls
+
+    outside of the class
+    object,reference,classname
+
+Modify static variable:
+within the class:
+classname,self,cls
+
+outside of the class
+classname
+
+class Test:
+    a=10 
+    def __init__(self):
+        Test.a=20 
+        
+    @classmethod
+    def m2(x):
+        x.a=40  
+        Test.a=50 
+    @staticmethod
+    def m3():
+         Test.a=60  
+
+t=Test()
+t.m2()
+t.m3()
+Test.a=60.    modify static variable, only way is define outside of class with classname
+print(Test.a)
+print(t.a)
+
+How to delete static variable:
+    within the class
+    classname, self,cls
+
+    outside of the class
+    classname
+
+
+class Test:
+    a=10 
+    def __init__(self):
+        del Test.a
+
+print(Test.__dict__)
+t=Test()
+print(Test.__dict__)
+
+out:
+{'a': 10, '__module__': '__main__', '__doc__': None, '__init__': <function __init__ at 0x106286050>}
+{'__module__': '__main__', '__doc__': None, '__init__': <function __init__ at 0x106286050>}
+
+delete:
+Ex-1:
+class Test:
+    a=10 
+    
+
+t=Test()
+del Test.a
+del t.a ## invalid, we need to access only withclass name.
+
+Ex-2:
+class Test:
+    a=10
+
+    def m1(self):
+        self.a=888
+        
+t=Test()
+t.m1()
+# class level
+#print(Test.a)   
+print(t.a)   object level 
+
+
+
+totally two variable are created for a, one is class level and another one is object level
+
+
+instance variables (object level variables):
+by using self(within the class) or by using object reference(outside of class)
+
+static variables:
+    class level variables
+    directly by, using cls variable
+    by using classname from outside of the class
+
+    good practise is: instance with self
+    static with classname
+
+
+Local variables:
+#Local variables:
+class Test:
+    def m1(self):
+        a=100
+        print(a)
+
+    def m2(self):
+        b=200
+        print(b)
+
+t=Test()
+t.m1()
+t.m2()
+        
+        
+Note:
+can’t access with classname, self and cls.
+
+Ex-1:
+class Test:
+    def average(self, list):
+        # local variables:
+        result=sum(list)/len(list)
+        print("The Average Value:", result)
+
+t=Test()
+t.average([10,20,30,40,50])
+
+
+global variable:
+if you added variable as global you can access it through out in the module.
+
+
+Types of Methods:(Thumb rule):
+instance methods
+class methods (		The class method can only access the class attributes but not the instance attributes.
+)
+static methods
+
+when we can go for instance method.
+
+1. if we are using at-least one instance variable-instance method.
+2. If we are using only static variables but not instance variables — class method.
+3. If we not using any instance or static variable — static method.
+
+
+Instance Method:
+Inside method body we are accessing only class level data
+what is the need of declaring as instance method.
+
+class variables are static variables
+
+
+
+Instance method    vs      class method:
+
+1. Inside method body if we are using at-least one instance variable then compulsory we should declare that method as instance method
+
+2. inside method body if we are using only static variables then it is highly recommended to declare that method as class method
+
+3. The declare instance method we are not required to use any decorator. to declare class method compulsory we should use @classmethod decorator
+
+4. The first argument to the instance method should be self, which is reference to current object and by using self, we can access instance variables inside method
+
+5. The first argument to the class method should be cls, which is reference variable current class object and by using that we can access static variables
+
+6. inside instance method we can access both instance and static variables
+7. inside class method we can access only static variables and we cannot access instance variables.
+
+8. we can call instance method by using object reference 
+9. we can call class method wither by using object reference or by using class name, but recommended to use classname.
+
+
+
+
+
+Ex-1:
+class Animal:
+    legs=4
+
+    @classmethod
+    def walk(cls, name):
+        print('{} walks with {} legs'.format(name,cls.legs))
+
+Animal.walk('Dog')
+Animal.walk('cat')
+        
+
+Ex-2:
+class Test:
+    count=0
+    def __init__(self):
+        #accessing static variable in constructor 
+        Test.count=Test.count+1
+    @classmethod
+    def getNoofObjects(cls):
+        print('The number of objects created:', cls.count)
+
+t1=Test()
+t2=Test()
+t2.getNoofObjects()
+Test.getNoofObjects()
+            
+
+note:
+** if don’t define @classmethod decorator 
+that method is going to instance method and the first argument becomes self, no need to define with name self.
+
+Ez:
+def f1(cls, self):
+here cls becomes self and self becomes normal variable
+
+
+
+instance method vs class method vs static method:
+
+1. If we are using any instance variables inside method body then we should go for instance method, we should call by using object reference only
+2. If we are using only static variables inside method body then this method no way related to a particular object, we should declare such type of methods as class method. we can call either by using object reference or by using class name.
+3. If we are not using any instance variable and any static variable inside method body, to define such type of general utility methods we should go for static methods. we can call either by using object reference or by using class name
+
+If we are not using any decorator:
+—————————————————
+For class method, @classmethod decorator is mandatory
+For static methods, @staticmethod decorator is optional
+without any decorator the method can be either instance method or static method
+if we are calling by using object reference then it should be instance method
+If we are calling by using class name then it should be static method.
+
+
+How to access members of one class inside another class:
+==========================================
+
+Ex-1:
+class Employee:
+    def __init__(self,eno,ename,esal):
+        self.eno=eno
+        self.ename=ename
+        self.esal=esal
+
+    def display(self):
+        print("Employee  Number:", self.eno)
+        print("Employee Name:", self.ename)
+        print("Employee salary:", self.esal)
+        
+
+class Test:
+    def modify(emp):
+        emp.esal=emp.esal+10000
+        emp.display()
+
+
+e=Employee(872425, 'Durga', 70000)
+Test.modify(e)
+        
+out:
+Employee  Number: 872425
+Employee Name: Durga
+Employee salary: 80000
+
+
+Inner classes:
+The class which is declared inside another class
+2. Without existing one type of object if there is no chance of existing another type of object then we should go for inner classes
+eg:
+class Car:
+     ………
+        class Engine:
+               ……..
+
+ex-2:
+class University:
+      class Department:
+
+ex-3:
+class Human:
+       class Department:
+
+Ex-1:
+class Outer:
+    def __inti__(self):
+        print('Outer  class object creation...')
+
+    class Inner:
+        def __init__(self):
+            print('Inner class object creation...')
+           # with out existing there is no chance of existing inner class
+        def m1(self):
+            print('Inner class method')
+o=Outer()
+i=o.Inner()
+i.m1()
+
+or
+
+o=Outer().Inner()
+o.m1()
+
+or
+
+o=Outer().Inner().m1()
+            
+Ex-2:
+class Human:
+    def __init__(self):
+        self.name='Durga'
+        self.head=self.Head()
+
+    def display(self):
+        print('Name:', self.name)
+        self.head.talk()
+        self.head.brain.think()
+
+
+    class Head:
+        def __init__(self):
+            self.brain=self.Brain()
+
+        def talk(self):
+            print('Talking...')
+
+        class Brain:
+            def think(self):
+                print('Thinking ...')
+
+
+h=Human()
+h.display()
+            
+
+
+Nested Methods:
+Use code reusebility 
+
+Ex-1:
+
+class Test:
+    def m1(self):
+        def sum(a,b):
+            print('First Argument:',a)
+            print('Second Argument:',b)
+            print('The sum:', a+b)
+            print('The Product')
+            print('*'*20)
+
+        sum(10, 20)
+        sum(5,10)
+        sum(15,20)
+
+t=Test()
+t.m1()
+    
+
+out:
+First Argument: 10
+Second Argument: 20
+The sum: 30
+The Product
+********************
+First Argument: 5
+Second Argument: 10
+The sum: 15
+The Product
+********************
+First Argument: 15
+Second Argument: 20
+The sum: 35
+The Product
+********************
+
+
+Garbage Collection:
+===============
+To destroy useless object, which running in the background.
+
+Python programming is robust because program failing ie very very less due memory issues
+del t1
+t1=None
+
+del t1:
+Here t1 is pointing to a variable,
+then del t1, t1 get deleted and that variable is eligible for garbage collection.
+
+t1=None:
+Here t1 is point to variable, when t1=None means not point to any variable, then before variable eligible for garbage collection
+
+difference t1 is get delete you won’t access it (del t1)
+t1 is accessible (t1=None)
+
+gc module:
+there is module for garbage collection
+gc.isenabled()
+gc.disable()
+gc.enable()
+
+
+Destructor: is to perform clean up-activities before destroying object, so we have write explicitly. garbage collector will called automatically
+
+__del__(self):
+close db connection
+close network connection
+
+Just before 
+
+
+garbage collector is a demon’s thread because executed in the back ground.
+pvm is responsible to call and gb is responsible to destroy object
+Here you have a variable, that variable associated with some object, you called garbage collector to destroy this variable, then immediately this object will says, this variable is associated with one database connection and network connection, if you can provide reference to this variable or value, these thing then you can delete
+in this scenario garbage collector will provide reference to this variable to that connection for that one concept in garbage collector that is __del__(self):
+
+Ex-1:
+import gc
+print(gc.isenabled())
+gc.disable()
+print(gc.isenabled())
+gc.enable()
+print(gc.isenabled())
+
+
+Ex-2:
+import time
+class Test:
+    def __init__(self):
+        print('Object Initialization...')
+
+    def __del__(self):
+        print('Fulfilling last wish and performing cleanup activities...')
+
+t1=Test()
+time.sleep(10)
+print('End of application')
+
+# the above program t1 is not eligible for garbage collector, that why destructor method is not called
+# once this vairable is eligiable for GB, then __del__ method will be called.
+
+to eligible for t1 to garbage
+t1=None
+then immediatley this destructor method will be called.
+here t1 get destroyed immediately once it is eligible for garbage collector.
+
+
+Ex-3:
+import time
+import gc
+class Test:
+    def __init__(self):
+        print('Object Initialization...')
+
+    def __del__(self):  — destructor method
+        print('Fulfilling last wish and performing cleanup activities...')
+
+gc.disable()
+print(gc.isenabled())
+t1=Test()
+t1=None
+time.sleep(10)
+print('End of application')
+
+out:
+False
+Object Initialization...
+Fulfilling last wish and performing cleanup activities...
+End of application
+
+
+Ex-4:
+import time
+import gc
+class Test:
+    def __init__(self):
+        print('Object Initialization...')
+
+    def __del__(self):
+        print('Fulfilling last wish and performing cleanup activities...')
+
+t1=Test()
+t2=t1
+t3=t2
+t4=t3
+
+if here t1=None, t1 is not eligible for garbage collector, because you can access it with t2
+t2=None, same as t1
+t3=None, same
+t4=None then only reset all are eligible for garbage collector.
+
+Ex-5:
+ for above thing, below one is the related example.
+
+import time
+import gc
+class Test:
+    def __init__(self):
+        print('Object Initialization...')
+
+    def __del__(self):
+        print('Fulfilling last wish and performing cleanup activities...')
+
+t1=Test()
+t2=t1
+t3=t2
+t4=t3
+del t1
+time.sleep(10)
+print('After deleting t1 object not destroyed')
+del t2
+del t3
+time.sleep(10)
+print('still object not eligible for gc')
+time.sleep(10)
+del t4
+time.sleep(10)
+print('End of application')
+
+Ex-6:
+
+import time
+import gc
+class Test:
+    def __init__(self):
+        print('Object Initialization...')
+
+    def __del__(self):
+        print('Fulfilling last wish and performing cleanup activities...')
+
+list[Test(), Test(), Test()]
+time.sleep(10)
+list=None
+time.sleep(10)
+print('End of application')
+
+# here constructor will be called thrice and destructor will also be called thrice.
+
+Ex-7:
+import time
+import sys
+class Test:
+    def __init__(self):
+        print('Object Initialization...')
+
+    def __del__(self):
+        print('Fulfilling last wish and performing cleanup activities...')
+
+t1=Test()
+t2=t1
+t3=t2
+t4=t3
+print(sys.getrefcount(t1))
+
+# here totally we have 5 reference object including self,
+# here self is implicitly python provide reference object
+# getrefcount(), to know the count of how many reference objects are available.
+
+
+
+
+
+
+Polymorphism:
+
+poly means many 
+morphs means forms
+
+one name but multiple forms
+
+Polymorphism contains, operator overloading, duck typing, method overriding.
+
+Overloading:
+
+10+20 ====>30
+‘durga’+’soft’ ===>durgasoft
+
++ is the overloading here, it means same operator performing multiple roles is called overloading or operator overloading.
+
+10*3 ==>30
+‘durga’*3 ===> durgadurgadurga
+
+
+deposit(cash)
+deposit(cheque)
+deposit(dd)
+
+methods are same but arguments are different is called overloading.
+
+Operator Overloading:
+=================
++
+*
+Any python operator
+for our own purposes also
+
+Invalid Ex-1:
+class Book:
+    def __init__(self, pages):
+        self.pages=pages
+
+b1=Book(100)
+b2=Book(200)
+print(b1+b2)
+
+Here + operator will not work for reference objects
+will work only for integers and strings only
+
+
+Ex-1: valid
+class Book:
+    def __init__(self, pages):
+        self.pages=pages
+#magic method
+    def __add__(self, other):
+        return self.pages+other.pages
+
+b1=Book(100)
+b2=Book(200)
+print(b1+b2)
+
+if you want to use + for our custom object reference definitely we need magic method, here self reference object of b1, other for b2
+
+
+Ex-2:
+class Book:
+    def __init__(self, pages):
+        self.pages=pages
+
+    def __add__(self, other):
+        return self.pages+other.pages
+    
+    def __sub__(self, other):
+        return self.pages-other.pages
+    
+b1=Book(100)
+b2=Book(200)
+print(b1+b2)
+print(b1-b2)
+
+
+All are these predefined python we can’t change name
+if a method start with __ and ends with __  these are magic methods or magic name.
+
++==> __add__()
+-==> __sub__()
+*==> __mul__()
+/==> __div__()
+%==>__mod__()
+//==>__floordiv__()
+**==>__pow__()
+
+>==>__gt__()
+>= ==>__ge__()
+< ==>__lt__()
+<= ==>__le__()
+== ==>__eq__()
+!= ==>__ne__()
+
++=  ==> __iadd__()
+-=  ==> __isub__()
+*=  ==> __imul__()
+/=  ==> __idiv__()
+%=  ==>__imod__()
+//=  ==>__ifloordiv__()
+**=  ==>__ipow__()
+
+can we define more than one magic method?
+yes but python will consider only the last for magic method.
+if you define multiple methods with same 
+
+
+Ex-2:
+class Book:
+    def __init__(self, pages):
+        self.pages=pages
+
+    def __str__(self):
+        return str(self.pages)
+    
+b1=Book(100)
+print(b1)
+
+
+Ex-3:
+class Book:
+    def __init__(self, pages):
+        self.pages=pages
+
+    def __str__(self):
+        return str(self.pages)
+
+    def __add__(self, other):
+        total=self.pages+other.pages
+        b=Book(total)
+        return b
+    
+b1=Book(100)
+b2=Book(200)
+b3=Book(400)
+print(b1+b2+b3)
+
+How this code will work here is,
+generally in magic we will take two variable fi you calling with two object reference , but here we are calling with three object reference  but passing only two variable 
+then in magic we are calling again Book class with b is the object reference and this b return b1+b2 adding with another object reference. finally bis the object reference of b1+b2 and b3 is also the object reference. we can  add both.
+
+
+Method Overloading:
+===============
+
+overloading means types of data or variable
+Ex-1:
+abs(int)
+abs(float)
+abs(double)
+this is the example in java
+here overloading means same method name but different argument(means different data types)
+that you need to define what type of data type it is. that why we concept of overloading
+
+
+but in python we not defining what type of data type it, that why we not having overloading concept in python.
+
+Ex-1:
+class Test:
+    def m1(self):
+        print('no-arg method')
+
+    def m1(self,x):
+        print('one arg method')
+
+
+t=Test()
+t.m1(10)
+
+Note: Here python we not consider all method, it will consider only last method in python
+if it is overloading concept only.
+
+
+
+** Python won’t provide support method/constructor overloading.
+
+Ex-1:
+m1(i)
+m1(i,j)
+m1(d)
+m1(s)
+
+here you can pass any argument python will take that argument, but in java you pass related argument then only it will consider. this is the main reason for method/constructor overloading concept not in python.
+
+Ex-1:
+class Test:
+    def m1(self, i):
+        print(i)
+
+
+t=Test()
+t.m1(10)
+t.m1('raj')
+t.m1(10.5)
+t.m1(10+2j)
+
+out:
+10
+raj
+10.5
+(10+2j)
+
+
+
+Ex-2:
+class Test:
+    def sum(self, *a):
+        total=0
+        for x in a:
+            total=total+x
+        print('The sum:', total)
+
+
+t=Test()
+t.sum(10,20)
+t.sum(10,20)
+t.sum(10,20)
+t.sum(10,20)
+t.sum()
+t.sum(10)
+
+out:
+The sum: 30
+The sum: 30
+The sum: 30
+The sum: 30
+The sum: 0
+The sum: 10
+
+Constructor overloading:
+Ex-1:
+class Test:
+    def __init__(self):
+        print("no-arg constructor')
+
+    def __init__(self,a):
+              print('one-arg')
+
+    def __init__(self,a,b):
+              print('two-arg')
+
+
+t=Test(10)
+
+ Note: Here this constructor overloading is not invalid, because even if you wrote
+              three constructor python will consider only the last constructor
+              but that method required 2 argument we are passing only one argument.
+
+Ex-2:              
+class Test:
+    def __init__(self, a=None,b=None,c=None):
+        print("constructor with 0|1|2|3")
+
+
+t=Test()
+t=Test(10)              
+t=Test(10,20)
+
+
+Why python does not support method overloading?
+https://www.geeksforgeeks.org/python-method-overloading/
+
+
+Duck typing:
+Duck typing is a concept related to dynamic typing, where the type or the class of an object is less important that the Methods it defines.
+When you use duck typing, you do not check types at all. Instead, you check for the presence of a given method or attribute.
+
+If it looks like a duck and quacks like a duck, it's a duck.
+
+Example:
+Class Dog:
+	def sound():
+		print("Woof Woof")
+
+Class cat:
+	def sound():
+		print("Meow Meow")
+
+Class Duck:
+	def sound():
+		print("QUACK QUACK")
+
+Def all_sounds(obj):
+	obj.sound()
+
+x=cat()
+All_sounds(x)
+
+Here only cat class will be called, rest of the class is less important.
+
+Real time: we can use testing purpose, we can write count in one method, distinct on one method, null check on one method etc.....
+ 
+
+
+
+
+             
+Encapsulation:
+Wrapping up data and methods into single class
+
+Main purpose is:
+Restricting access of variables and methods.
+
+https://www.geeksforgeeks.org/encapsulation-in-python/
+
+Inheritance:
+1. code reusability
+2.  Existing functionality we can extend
+
+
+class P:
+       10methods:
+class C(P):
+       5 more methods:
+
+This the way of calling parent class in child class in python.
+
+ class P1:
+    2 methods
+class P2:
+     3 Methods
+
+class c(P1,P2):
+       4 Methods
+
+Ex-1:
+class P:
+    def property(self):
+        print('cash+land+gold+power')
+
+    def marry(self):
+        print("Raji")
+
+class C(P): pass
+
+# calling child class 
+c=C()
+# accessing parent class method through child object reference.
+c.property()
+c.marry()
+        
+***Here we don't want to go with one of parent method,
+we want to override same method in class .
+        
+        
+
+
+out:
+cash+land+gold+power
+katrina..
+
+
+
+Overriding:
+Method overriding:
+from child class method we can call parent class method with super().
+
+Ex-1:class P:
+    def property(self):
+        print('cash+land+gold+power')
+
+    def marry(self):
+        print("Raji")
+
+class C(P):
+    def marry(self):
+        print('katrina..')
+
+# calling child class 
+c=C()
+# accessing parent class method through child object reference.
+c.property()
+c.marry()
+
+out:
+cash+land+gold+power
+katrina..
+
+
+class Loan:
+    def interestrate(self):
+        return 10.5
+
+class Gloan(Loan):
+    def interestrate(self):
+        return 14.5
+
+
+class Vloan(loan):
+    def interestrate(self):
+        return 8.5
+    
+              
+
+Constructor Overloading:
+
+class P:
+def __init__(self):
+print(‘Parent Constructor’)
+
+class C(P):
+def __init__(self):
+print(“Child constructor’)
+
+c=C()
+
+Ex-3:
+
+class Person:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+
+class Employee(Person):
+    def __init__(self, name, age, eno, esal):
+        super().__init__(name, age)
+        self.eno = eno
+        self.esal = esal
+
+    def display(self):
+        print('Employee Name:', self.name)
+        print('Employee Age:', self.age)
+        print('Employee Number:', self.eno)
+        print('Employee Salary:', self.esal)
+
+
+e = Employee('Durga', 48, 3435, 3456754)
+e.display()
+
+out:
+Employee Name: Durga
+Employee Age: 48
+Employee Number: 3435
+Employee Salary: 3456754
+
+Inheritance:
+Inheritance is the capability of one class to derive or inherit the properties from another class.
+
+Single inheritance: When a child class inherits from only one parent class, it is called single inheritance
+Multiple inheritance: When a child class inherits from multiple parent classes, it is called multiple inheritances.   Father --> Mother --> son (Father, Mother)
+Multilevel inheritance: A --> B --> C (Grand Father --> Father (GrandFather) --> Son(Father))
+Hierarchical inheritance: (Parent --> Child1(parent) --> Child2(parent))
+Hybrid inheritance: (School --> student1(school) --> student2(school) --> student3(student1, school))
+
+class Parent:
+Class child(parent):
+
+Multi-level:
+Class grandparent:
+Class parent(grandparent):
+Class child(parent):
+* here, we can access method of grandparent class as well using child class reference object
+
+Hierarchical:
+One parent class, multiple child classes.
+
+Multiple Inheritance:
+multiple parent class can be accessed from one child class.
+
+Abstract Class and Abstract Method:
+Abstract method:
+A method without definition ( means writing without code inside of the method)
+Abstract class:
+If a class contain at least one abstract method  is called abstract class.
+
+** for abstract creating an object is not possible because in any class if we called a method with object reference, then that method had some code and produce an output but in abstract method doesn’t have any code.
+
+from abc import *.  — this is compulsory for abstract class.
+
+If you need to access abstract class then inheritance is the concept to access abstract class.
+
+Below one is the example:
+
+from abc import ABC, abstract.      (ABC means abstract base class)
+Class shape(ABC):
+    @abstract method
+    Def area(self):
+    None:     (here we can use pass also if you pass @abstractmethod decorator is not required)
+
+Class Rectangle(shape):
+  l=3
+b=2
+Def area(self):
+Return l*b
+
+r= Rectangle()
+print(r.area())
+Same example we can access normal method as well
+
+from abc import ABC, abstract.      (ABC means abstract base class)
+Class shape(ABC):
+    @abstract method
+    Def area(self):
+    None:     (here we can use pass also if you pass @abstractmethod decorator is not required)
+   Def show(self):
+   print(‘HI’)
+Class Rectangle(shape):
+  l=3
+b=2
+Def area(self):
+Return l*b
+
+r= Rectangle()
+print(r.area())
+print(r,show())
+
+
+
+Concrete class:
+If a class doesn’t have any abstract method it is called concrete class.
+
+from abc import*
+class Vehicle:
+
+@abstractmethod
+def getnoofwheels(self):
+print('Hello from abstract method')
+
+we can create object for the object abstract class
+
+v=Vehicle()
+print(v.getnoofwheels()) ==> this will print None because method not retuning anything
+v.getnoofwheels()
+
+In abstract class if you removed ABC, nothing can changed it is just 
+find that class as abstract class.
+
+
+In one scenario we can't create object reference in abstract class;
+If class extending ABC class and contains at least one abstract method, then object creation is not possible.
+
+Ex-1:
+from abc import *
+class Vehicle(ABC):
+def getNoofWheels(self):
+print('Hello from abstract method')
+
+v=Vehicle()
+
+In abstract we can have multiple methods
+even some concrete methods
+abstract class can contains both abstract methods normal methods
+child classes are responsible to provide proper implementation of parent class
+abstract methods.
+
+Ex-1:
+from abc import *
+class Vehicle(ABC):
+def getNoofWheels(self):
+ pass
+
+class Bus(vehicle):
+#this method is called as concrete class
+def getNoOfWheels(self):
+  return7
+
+class Auto(vehicle):
+ def getNoofWheels(self):
+   return3
+
+b=Bus()
+print(b.getNoOfWheels())
+a=Auto()
+print(a.getNoOfwheels())
+
+
+Interface:
+---------- 
+If abstract class contains only abstract methods then
+it is considered as interface..
+
+Ex-1:
+class CA:
+def m1():pass
+def m1():pass
+def m1():pass
+def m1():pass
+
+In every method we are not implementing anything
+and these class and methods are called as interface.
+
+interface vs Abstract class vs concrete class:
+----------------------------------------------
+1. If we don't know anything about implementation just we have
+requirement
+specification then we should go for interface.
+
+class CollegeAutomation:
+def m1():pass
+def m2():pass
+def m3():pass
+
+2. If we are talking about implementation but not completely 
+then we should go for abstract class.
+(partially implemented class)
+
+class ImplcCls(CollegeAutomation):
+def m1():
+print('m1 method implementation')
+
+def m2():
+print('m2 method implementation')
+
+
+Ex-1:
+from abc import *
+class CollegeAutomation(ABC):
+def m1():pass
+def m2():pass
+def m3():pass
+
+class ImplcCls(CollegeAutomation):
+def m1():
+print('m1 method implementation')
+
+def m2():
+print('m2 method implementation')
+
+class Concrtcls(ImplcCls):
+def m3():
+print('m3 method implementation')
+
+c=Concrtcls()
+c.m1()
+c.m2()
+c.m3()
+
+
+
+Important examples:
+
+from abc import *
+class Printer(ABC):
+@abstractmethod
+def printit(self,text):pass
+
+@abstractmethod
+def disconnect(self):pass
+
+class EPSON(Printer):
+def printit(self,text):
+print('Printing from EPSON Printer...')
+print(text)
+def disconnect(self):
+print('Printing completed on EPSON Printer...')
+
+class HP(Printer):
+def printit(self,text):
+print('Printing from HP Printer...')
+print(text)
+def disconnect(self):
+print('Printing completed on HP Printer...')
+
+with open('config.txt','r') as f:
+pname=f.readline()
+# once you entered type of database which type of database 
+want to connect
+then that string name is converted as class
+that means here your oracle as string but need to call class 
+for that purpose string need to convert has classname.
+by using globals() we can convert.
+classname=globals()[pname]
+x=classname()
+x.printit('This data has to print...')
+x.disconnect()
+
+
+
+
+Every method, Every variable is by default public only.
+
+public:
+Every thing in the python is public.
+
+x=10
+__x=10(strongly private)
+
+Ex-1:
+class Test:
+    def __init__(self):
+    self.__x=10
+t=Test()
+print(t.x)
+
+
+Note: you can’t access private variable outside of class.
+
+private variable can access with in the class only.
+
+Ex-2:
+class Test:
+    def __init__(self):
+        self.__x=10
+    def m1(self):
+        print(self.__x)
+t=Test()
+#print(t.x)
+t.m1()
+
+out:
+10
+
+Basically, we can’t access private variable from outside of class but there is one way we can access it from out side of the class.
+
+Here Ex:
+syntax:
+objectreference._classname__variablename
+
+Ex-1:
+class Test:
+    def __init__(self):
+       self.__x=10
+t=Test()
+print(t._Test__x)
+
+
+Ex-2:
+class Test:
+    def __init__(self):
+       self.__x=10
+t=Test()
+print(t)
+
+Here we are getting other format, it is not in string format
+
+if you want to get in string format
+by using __str__
+Ex-1:
+
+class Student:
+    def __init__(self, name, rollno):
+        self.name=name
+        self.rollno=rollno
+    def __str__(self):
+        return 'This si Student with Name:{} and Rollno:{}'.format(self.name,self.rollno)
+
+s1=Student('Durga',101)
+s2=Student('Ravi',102)
+print(s1)
+print(s2)
+
+out:
+This si Student with Name:Durga and Rollno:101
+This si Student with Name:Ravi and Rollno:102
+
+
+protected:
+_x=20 
+we can access this protected variable in class and child class, but it is convention only in python
+
+so, we can’t used protected variables 
+
+
+
+
+
+Multi Threading:
+—————————
+Multitasking:
+—————————
+1. Process Based Multi tasking 
+2. Thread based Multi tasking
+
+Process Based Multi tasking:
+———————————————
+each task is a separate independent process( best suite at os level)
+
+Ex:
+Typing a python program in the editor
+Listening audio songs from the same system
+Downloading new songs from the internet
+
+Thread based Multi tasking
+———————————————
+each task is an independent part of the same program( developer prospective Threading)
+
+Thread:
+1.An independent part of program
+2. A flow of execution is considered as a thread
+3. it is an python object
+
+3ways:
+1. creating a thread without using any class(Functional oriented way)
+2. Creating a Thread by extending thread class(OOP)
+3. creating a thread without extending thread class(OOP)
+
+1. creating a thread without using any class
+————————————————————
+threading.current_thread().getname()
+
+Ex-1:
+import threading 
+from threading import *
+
+def display():
+for i in range(10):
+print(‘Child Thread’)
+# creation of Thread object to execute display
+t=Thread(target=display)
+#creating thread
+t.start()
+for i in range(10):
+print(’Main Thread’)
+
+Another way of defining threading
+
+from threading import *
+class Test:
+def m1(self):
+for i in range(10):
+print(‘Child Thread-1’)
+
+obj=Test()
+t=Thread(target=obj.m1)
+t.start()
+for i in range(10):
+print(‘Main Thread-1’)
+
+Here we have two thread, one is which i created t=Thread(target=display)
+this is child thread, it is responsible for executing display method. After t.start() we have code that is executed in main thread.
+
+Here both thread executed simultaneously 
+so, we cannot guaranty which thread execute first.
+
+Main thread responsible of child thread creation and to start also, once thread started main thread is not responsible for child creation, then both will become independent
+
+
+
+Ex-2:
+from threading import *
+
+def display():
+print(‘Child Thread’, current_thread().getname())
+# creation of Thread object to execute display
+t=Thread(target=display)
+#creating thread
+t.start()
+print(’Main Thread’, current_thread().getname())
+
+The above two examples are function way of defining thread 
+
+Below one the OOPs oriented thread defining.
+
+2. Creating a Thread by extending thread class
+—————————————————————
+
+Ex-1:
+from threading import *
+class MyThread(Thread):
+def run(self):
+for i in range(10):
+print(‘Child Thread’)
+
+t=MyThread()
+t.start()
+for i in range(10):
+print(‘Main Thread’)
+
+
+
+Advantage of multithreading:
+performance  increase.
+
+
+
+
+Ex-1:
+import time 
+def doubles(numbers):
+    for n in numbers:
+        time.sleep(1)
+        print('Double Value:', 2*n)
+
+def squares(numbers):
+    for n in numbers:
+        time.sleep(1)
+        print('square value:', n*n)
+numbers=[1,2,3,4,5,6]
+begintime=time.time()
+doubles(numbers)
+squares(numbers)
+endtime=time.time()
+print('The total time taken:', endtime-begintime)
+
+
+out:
+Double Value: 2
+Double Value: 4
+Double Value: 6
+Double Value: 8
+Double Value: 10
+Double Value: 12
+square value: 1
+square value: 4
+square value: 9
+square value: 16
+square value: 25
+square value: 36
+The total time taken: 12.055893659591675
+
+the above code taking time of 12 second, running in main thread.
+
+if you use multiple threads we can consume the time.
+
+Ex-2:
+
+import time 
+def doubles(numbers):
+    for n in numbers:
+        time.sleep(1)
+        print('Double Value:', 2*n)
+
+def squares(numbers):
+    for n in numbers:
+        time.sleep(1)
+        print('square value:', n*n)
+numbers=[1,2,3,4,5,6]
+begintime=time.time()
+t1=Thread(target=doubles, args=(numbers,))
+t2=Thread(target=squares, args=(numbers,))
+t1.start()
+t2.start()
+# main thread will wait untill t1 thread complete, these t1.join() and t2.join() will execute by main thread.
+t1.join()
+# main thread will wait untill t12thread complete
+t2.join()
+endtime=time.time()
+print('The total time taken:', endtime-begintime)
+
+
+Setting and Getting name of a thread:
+——————————————————
+t.getName()
+t.setName()
+
+
+from threading  import *
+print(current_thread().getName())
+current_thread().name=‘Durga’
+print(current_thread()
+
+If you want to change name of thread or if you want to change name of thread to your own name of thread we can use setname()
+
+to get name
+———————
+t.getName()
+
+to set name
+——————
+t.name=‘durga’
+t.setName(‘Durga’)
+
+
+
+For Every thread a unique identification number available.(Thread Identification number
+                                                           
+
+Thread Identification Number:(ident)
+------------------------------
+Ex-1:
+from threading import *
+def test():
+   print(‘Child Thread’)
+
+t=Thread(target=test)
+r.start()
+
+print(‘Main Thread Number:’,current_thread().ident)
+print(‘Chid Thread identification Number:’, t.indent)
+
+
+active_count():
+===========
+
+by using this active_count(), we can get number of thread are in active.
+
+Ex-1:
+from threading import*
+import time
+def display(): print(current_thread().name,’….started’)
+time.sleep(3)
+print(current_thread().name, ‘…..ended’)
+t1=Thread(target=display,name=‘ChildThread-1’)
+t2=Thread(target=display,name=‘ChildThread-2’)
+t3=Thread(target=display,name=‘ChildThread-3’)
+t1.start()
+t2.start()
+t3.start()
+print(‘The number of active Threads:’,active_count())
+time.sleep(10)
+print(‘The number of active Threads:’, active_count())
+
+
+enumerate():
+==========
+to get list of all active threads is enumarator
+
+from threading import*
+import time
+def display(): print(current_thread().name,’….started’)
+time.sleep(3)
+print(current_thread().name, ‘…..ended’)
+t1=Thread(target=display,name=‘ChildThread-1’)
+t2=Thread(target=display,name=‘ChildThread-2’)
+t3=Thread(target=display,name=‘ChildThread-3’)
+t1.start()
+t2.start()
+t3.start()
+l=enumerate()
+for t in l:
+print(’Thread Name:’,t.name)
+print(’Thread Identification Number:’,t.ident)
+print()
+t.sleep(10)
+l=enumerate()
+for t in l:
+print(’Thread Name:’,t.name)
+print(’Thread Identification Number:’,t.ident)
+print()
+
+
+isAlive():
+======
+if you want to know weather thread is alive or dead.
+
+# t1 is thread object reference
+t1.isAlive()
+
+time.sleep(10)
+t1.isAlive() # thread is dead we will get false
+
+
+join():
+==== 
+If a thread want to wait until complete of other thread, we will go join().
+
+
+three threads 
+t1           t2.           t3
+            t1.join().   t2.join()
+
+why we write t1.join in thread t2, because thread t2 need to wait until complete of t1, in t2 we are asking to wait until t1  execution completed.
+
+
+Ex-1:
+from threading import *
+import time
+def display():
+for i in range(10):
+print(’seetha thread’)
+time.sleep(3)
+
+t= Thread(target=display)
+t.start()
+
+t.join()
+for i in range(10):
+print(‘Rama Thread'
+
+Note: Here t1 seetha thread is child thread once it executed then only main thread start execution rama thread
+
+
+Ex-2:
+from threading import *
+import time
+def display():
+for i in range(10):
+print(’seetha thread’)
+time.sleep(3)
+
+t= Thread(target=display)
+t.start()
+
+t.join(10)
+for i in range(10):
+print(‘Rama Thread'
+
+
+Note: Here seetha thread t1 start and printed 3 times then child thread waits for 10 seconds then again seetha thread will executes. 
+
+
+Daemon Thread:
+=============
+The threads which are executing in the background is the Daemon thread. 
+To check weather thread is running in the back ground or not, any one of method we can use. t.isDaemon()
+t.daemon
+
+change daemon nature by using
+t.setDaemon(True)
+before starting thread only we need to use this method, once thread is started we are not allowed to change it.
+
+Main thread is alway not daemon thread.
+
+
+Synchronization:
+============
+If multiple thread are operating simultaneously on same object, there may be a chance of  get data inconsistency 
+
+synchronization means at a time only one thread.
+
+
+Ex-1:
+from threading import *
+import time
+
+def wish(name):
+    for i in range(10):
+        print('Good Evening:')
+        time.sleep(5)
+        print(name)
+
+t=Thread(target=wish, args=('Dhoni',))
+t.start()
+t2=Thread(target=wish,args=(‘Kohli’,))
+t2.start()
+
+out:
+Good Evening:
+Good Evening:
+Dhoni
+Good Evening:
+Kohli
+Good Evening:
+Dhoni
+Kohli
+Good Evening:
+Good Evening:
+Dhoni
+Kohli
+Good Evening:
+Good Evening:
+Kohli
+Good Evening:
+Dhoni
+Good Evening:
+
+
+Note: here we have data inconsistency to over come this we have Synchronization
+
+At a time only one thread ==> Synchronization
+
+1.Lock
+2.RLock
+3.Semaphore 
+
+by using these three we are implementing synchronization. 
+
+def wish():
+1000 line of code # reading only
+some important code which should be executed by only one thread. # updating
+1000 line #reading only
+ 
+t1—> wish()
+t2 —> wish()
+
+t1.join()
+
+here why we are not using join  and what happen if you use join
+
+for example here you use join() then  wish() entire  code will execute 
+but my requirement is 1000 line will execute in one way and last 1000 line will execute in another  way there is  no dependency 
+by using synchronization we will do it.
+
+Synchronization  by using Lock Concept:
+==============================
+If you lock a object, which thread acquire that object will only execute the code, until this code complete and release the lock other thread will not execute.
+l=Lock()
+ lock() is class name
+
+l.acquire()
+if a thread required object this method will execute
+and performing synchronized operations
+1.release()
+
+
+between acquire() and release()
+our code is there and that code will execute at a time with only one thread.
+
+l.acquire(), what ever the thread execute this line that thread having this lock object.
+
+Example:
+l=Lock()
+def wish():
+1000 line of code # reading only
+l.acquire()
+some important code which should be executed by only one thread. # updating
+l.release()
+1000 line #reading only
+
+
+Ex-1:
+
+
+from threading import *
+import time
+l=Lock()
+def wish(name):
+    l.acquire()
+    for i in range(10):
+        print('Good Evening:')
+        time.sleep(3)
+     l.release()
+   print(name)
+
+t=Thread(target=wish, args=('Dhoni',))
+t.start()
+t2=Thread(target=wish,args=(‘Kohli’,))
+t2.start()
+
+out:
+ Good Evening:
+Dhoni
+Good Evening:
+Dhoni
+Good Evening:
+Dhoni
+Good Evening:
+
+Good Evening:
+Kohli
+Good Evening:
+Kohli
+
+like both are printing 10 times.
+
+Here we can’t guaranty about which thread get first chance to execute, it will change from PVM to PVM.
+
+Here If t1 thread is not release(# l.release()) the lock then until it release next threads need to wait.
+Main thread won’t required lock to execute.
+
+
+**
+from threading import *
+import time print(“This is main thread”)
+l=Lock()
+print(“Main acquire the lock”)
+#l.acquire()
+print(“Main thread need to release lock”)
+l.release()
+print(“Main Thread need to release lock”)
+
+Here main thread started and  the lock is hold by it, but acquire method is commented 
+main thread will not acquire the lock but releasing, we will get runtime errors
+saying main thread is not acquired but releasing.
+
+
+l=Lock():
+disadvantage:
+This lock() method we can guaranty which thread holds this lock, we can’t track it.
+
+
+If same thread trying to acquire lock again and again, it saying this is already acquire by another even it both threads are also same, it can release thread until first approach is finished.
+
+
+
+RLock()
+once thread can acquire lock again and again we can go for RLock().
+
+Ex-1:
+from threading import *
+l=RLock() print(“Main thread trying to acquire lock…..”)
+l.acquire()
+print(“Main thread trying to acquire  lock again …”)
+acquire()
+print(“Main Thread acquire same lock again”)
+
+
+Lock and RLock:
+============ 
+Lock (lock concept is applicable for share objects)
+only one thread acquire at a time, even owner will not acquire multiple times.
+no tracking mechanism 
+
+RLock
+multiple holds
+have tracking mechanism
+if you have recursion better to go RLock.
+
+
+l=RLock()
+l.acquire() ==> got hold 1
+l.acquire() ==> got hold 2
+l.acquire() ==> got hold 3
+
+l.release(). ==> hold 3-1
+l.release() ==> hold 2-1
+l.release() ==>1-1
+
+
+SemaPhore:
+=========
+semaphore can acquire fixed number of counter objects
+s=Semaphore()
+the default count value is :1
+
+s.acquire().  count-1
+s.release()   count+1
+
+
+
+
+semaphore internally used lock concept
+Ex-1:
+from threading import*
+s=Semaphore(2)
+s.acquire()
+print(‘Main thread trying to acquire again…’)
+s.acquire()
+print(‘Again’)
+s.acquire()
+
+
+BoundedSemaphore:
+===============
+s=Semaphore(2)
+s.acquire()
+a.acquire()
+s.release()
+s.release()
+s.release()
+s.release()
+s.release()
+s.release()
+
+
+The number of release call and acquire call need not to be same.
+if you have these switchvation, we can go Bounded semaphore.
+
+Ex-1:
+s=BoundedSemaphore(2)
+s.acquire()
+s.acquire()
+s.release()
+s.release()
+s.release() 
+
+
+
+Interthread communication:
+=====================
+threads need to communicate each other we will use interthread communication.
+
+Ex:producer-consumer:
+
+
+Inter-Thread communication we can achieve by using these three approaches.
+1. Event 
+2. condition
+3. queue
+
+signal and wait:
+
+Event:
+=====
+Event internally maintain one flag.
+flag can be set(means execute) or clear(means wait)
+
+e=Event()
+Event is class present in thread module.
+1.set():
+=====
+e.set() ==> 
+thread will be in green color.
+
+clear()
+
+isSet()
+
+wait()  or wait(time) thread can wait untill event
+
+
+procuder and consumer example:
+
+producer e.set() and start the execution and consumer is e.wait(), event is created beacuse that we use e. producer is resposible to notifying to consumer then only consumer execute.
+
+
+Ex-1:
+from threading import *
+import time
+e=Event()
+def consumer():
+print(‘Consumer THread waiting for updation….’)
+e.wait()
+print(‘Consumer thread got notificaton and consuming items…’)
+def producer():
+time.sleep(5)
+print(‘Producer thread producing items …’)
+print(‘Producer thread producing items…’)
+print(‘Producer thread giving notification by setting event’)
+e.set()
+
+t1=Thread(target=producer)
+t2=Thread(traet=consumer)
+t1.start(0
+t2.start()
+
+
+Ex-2:
+from threading import *
+import time
+e=Event()
+def trafficpolice():
+while True:
+time.sleep(10)
+print(‘Traffic Police giving  GREEN Signal’)
+e.set()
+time.sleep(20)
+print(’Traffic police giving RED signal’)
+e.clear()
+
+def driver():
+num=0
+while True:
+print(‘Drivers waiting for GREEN signal’)
+e.wait()
+print(‘Traffic signal is GREEN… Vehicles can move’)
+while e.isSet():
+num=num+1
+print(‘Vehicke Number:’,num,’Crossing the signal’)
+time.sleep(2)
+print(‘Trafffic signal is RED… Drivers bave to wait’)
+
+t1=Thread(target=producer)
+t2=Thread(traet=consumer)
+t1.start(0
+t2.start()
+ 
+
+Ex-3:
+
+from threading import *
+import time
+e=Event()
+def producer():
+    print("I can produce your film, if i like it")
+    time.sleep(10)
+    e.set()
+    #time.sleep(10)
+    print("This is for testing purpose only")
+
+def consumer():
+    print("I am a director")
+    e.wait()
+    time.sleep(5)
+    print("i Had a stroy waiting for producer")
+    print("Hi Producer, i had a film story i can explain it if you like it we will start working it")
+    if e.isSet():
+        time.sleep(5)
+        print("I am the hero")
+
+    else:
+        print("No worries")
+
+
+t2=Thread(target=producer)
+t1=Thread(target=consumer)
+t2.start()
+t1.start()
+
+
+InterThread Communication by using condition object:
+===================================
+
+Event more advanced concept is condition.
+
+some kind of state change
+
+condition obhect is always associated with lock(Rlock)
+condition internally use lock concept.
+acquire()
+release()
+c.wait() or c.wait(time)
+c.notify()
+c.notifyAll()
+
+c.wait(). ==> Thread will entered into waiting state
+c.notify() ==> Giving notification to waiting threads
+
+case study:
+========
+producer Thread:
+=============
+generate item..
+acquirng the condition object ==> c.acquire()
+add item to the resource
+c.notify() for one thread is waiting, if multiple threads are waiting c,notifyall()
+
+consumer Thread:
+=============
+c.acquire()
+c.wait()
+consume item
+c.release()
+
+
+Ex-1:
+
+from threading import *
+def consume(c):
+c.acquire()
+print(‘Consumer waiting for updation…’) # Line1
+c.wait()
+print(‘Consumer got notification & consuming the item…’) # Line-4
+c.release()
+
+def produce(c):
+c.acquire()
+print(‘Produce prodcuing items…’) # Line-2
+print(‘Prodcue giving the notification …’) # Line-3
+c.notify()
+c.release()
+c=Condition()
+t1=Thread(target=consume, args=(c,))
+t2=Thread(target=produce, args=(c,))
+t1.start()
+t2.start()
+
+
+
+Ex-2:
+from threading import *
+import time
+
+def producer():
+    print("Iam the producer")
+    time.sleep(5)
+    c.acquire()
+    print("I am ready to produce")
+    c.notify()
+    print("I have 40cr budjet")
+    time.sleep(5)
+    c.release()
+
+def consumer():
+    print(" I am the director")
+    c.acquire()
+    print("I have script")
+    c.wait()
+    print("Lets start making a film")
+    c.release()
+
+c=Condition()
+t1=Thread(target=producer)
+t2=Thread(target=consumer)
+t1.start()
+t2.start()
+
+
+out:
+Iam the producer
+ I am the director
+I have script
+I am ready to produce
+I have 40cr budjet
+Lets start making a film
+
+
+Queue:
+Queue internally has condition object that condition has lock object
+
+import queue
+
+q=queue.Queue()
+
+put(): to put object in queue
+get(): to get item from queue
+
+put(): has internally acquire lock and release the lock we no need to do it externally( all producer methods are available inside put.
+
+get(): consumer methods are build internally inside of this method.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Shallow Copy and Deep Copy:
+======================
+
+l1=[10,20,30,40]
+l2=l1
+l2[2]=70
+print(l1)
+print(l2)
+
+here l2 is just variable reference only, it is not object reference, if you changed element of l2 then l1 also get changed 
+
+If you want same dataset for l1 after changing l2 
+l2=l1.copy()
+
+here l2 is completely different object reference
+
+
+
+
+
+import copy
+l1=[10,20,30,40]
+l2=copy.copy(l1)
+print(l1)
+print(l2)
+
+Shallow Copy and Deep Copy:
+——————————————
+Deep copy stores copies of the objects value
+Shallow copy reflects changes made to the new/copied object in the original object.
+
+
+Shallow copy:
+simple defination:
+If original object does not contain any nested objects then we should go for shallow cloning
+
+
+if the original object contains any reference to mutable objects, just duplicate reference  variables will be created pointing to old contained objects, but not duplicate object creation.
+
+l1=original
+l2=l1.copy ==>shallow copy
+
+
+Ex-1:
+l1=[10,20,[30,40],50]
+l2=copy.copy(l1)
+l1[0]=111
+l1[1]=222
+l1[2][0]=888
+l1[2][1]=999
+[1[3]=555
+print(l1)
+print(l2)
+
+out:
+
+[111, 222, [888, 999], 555]
+[10, 20, [888, 999], 50]
+
+here for nested list there won’t be create any reference only outer list only reference will be created.
+
+inner get changed to l2, and outer will get changed to out.
+
+** Nested data set will change from l1 to l2 or l2 to l1
+
+Deep copy:
+If original object contains any nested objects then we should go for deep cloning.
+
+Ex-1:
+l1=[10,20,[30,40],50]
+l2=copy.deepcopy(l1)
+l1[0]=111
+l1[1]=222
+l1[2][0]=888
+l1[2][1]=999
+l1[3]=555
+print(l1)
+print(l2)
+
+out:
+[111, 222, [888, 999], 555]
+[10, 20, [30, 40], 50]
+
+there is changes in l2.
+
+ Where ever we changed the data, their only the data will be changed.
+
+Abstract: 
+Abstract class
+Abstract Method
+interface
+
+Abstract means not complete
+Abstract Method:
+method has only declaration but not proper implementation 
+
+we can indicate the method name as Abstract method by using decorator.
+
+Ex-1:
+#abc means abstract base class
+from abc import *
+class Vehicle:
+@abstractmethod
+def getNoofWheels(self):
+pass
+
+Note: if your want to declare a method as abstract method, you need to import abc.
+
+Ex-2:
+from abc import *
+class Fruit:
+@abstractmethod
+def taste(self):
+pass
+
+
+Abstract class:
+partially implemented class 
+
+defining abstract class:
+class Fruit(ABC):
+
+we have abc module and ABC parent class
+
+Ex-1:
+from abc import *
+class Vehicle(ABC):
+@abstractmethod
+def getNoofWheels(self):
+pass
+
+
+Ex-2:
+from abc import *
+class Fruit(ABC):
+@abstractmethod
+def taste(self):
+pass
+

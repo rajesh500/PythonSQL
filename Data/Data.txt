@@ -1,0 +1,9 @@
+employeename,salary,state
+John,1000,texas
+Krish,1400,newyork
+peter,1200,Iowa
+john,1200,texas
+sam,1500,newjersey
+krish,2000,maryland
+triple,1800,oregon
+katty,1700,arizona

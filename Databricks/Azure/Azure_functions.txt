@@ -1,0 +1,15 @@
+Azure functions:
+It is a serverless computer service that lets you run event-triggered 
+code without having to explicitly provision or manage infrastructure.
+
+Azure functions allow you to run small pieces of code(called functions)
+without worrying about application infrastructure.
+
+
+Example for bulk data, ingrating systems,working with IoT and building simple APIs and micro services.
+Events like HTTP request, on schedule timer,
+on document addition...
+
+
+Functions need a storage account, to keep code when function called azure will pull the code from storage account and run it.
+Plan type: Consumption, oremium app service plan

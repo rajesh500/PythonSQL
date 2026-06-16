@@ -1,0 +1,16 @@
+
+head = Node
+cur = head
+cur.val (data/element)
+cur.next (current node reference)
+cur.next.next (next node reference)
+cur.next.val (next node element)
+last second node cur.next.next 
+# attahcing current node to new node
+cur.next = newNode
+* newNode.next = cur.next
+cur.next = newNode
+# remove first element 
+head = head.next
+cur.next = None
+cur.next = cur.next.next
