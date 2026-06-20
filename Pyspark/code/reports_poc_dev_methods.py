@@ -6,27 +6,27 @@ from sqlalchemy import create_engine, text
 
 ''' data pull, database queries required for the report '''
 def db_queries():
-    re231_select = 'select * from batchuat.t_re231_stg where pgm_type = '
-    re231_fltr_cw = 'CW'
-    re231_fltr_li = 'LI'
-    re231_fltr_tf = 'TF'
-    re231_order_by = ' order by child_age'
-    re231_query_cw = re231_select + "'" + re231_fltr_cw + "'" + re231_order_by
-    re231_query_li = re231_select + "'" + re231_fltr_li + "'" + re231_order_by
-    re231_query_tf = re231_select + "'" + re231_fltr_tf + "'" + re231_order_by
-    #print(re231_query_cw)
+    report_select = 'select * from schema.table where pgm_type = '
+    number_fltr_cw = 'BB'
+    number_fltr_li = 'CAAW'
+    number_fltr_tf = 'FF'
+    number_order_by = ' order by child_age'
+    number_query_cw = report_select + "'" + number_fltr_cw + "'" + number_order_by
+    number_query_li = report_select + "'" + number_fltr_li + "'" + number_order_by
+    number_query_tf = report_select + "'" + number_fltr_tf + "'" + number_order_by
+    #print(number_query_cw)
 
     # Querying backend table with required field and data.
     report_query = ''' select 
-    (select name from salesforceuat.t_county__c where cde_county__c::varchar = county__c::varchar) County,
+    (select name from table.t_county__c where cde_county__c::varchar = county__c::varchar) County,
     start_date__c, 
     end_date__c  
-    from salesforceuat.canned_report_request__c 
-    where id = (select max(id) from salesforceuat.canned_report_request__c where report_id__c = 'RE231') '''
-    db_crdntls_engine(re231_query_cw, re231_query_li, re231_query_tf, report_query)
+    from table.table 
+    where id = (select max(id) from table.table where report_id__c = 'number') '''
+    db_crdntls_engine(number_query_cw, number_query_li, number_query_tf, report_query)
 
 ''' reading a local file for db credentials '''
-def db_crdntls_engine(re231_query_cw, re231_query_li, re231_query_tf, report_query):
+def db_crdntls_engine(number_query_cw, number_query_li, number_query_tf, report_query):
     pdf = pd.read_csv(cred_path, header=None,  names=['host', 'database', 'user', 'password', 'port', 'environment'], index_col=False)
     envrmnt_vrble = pdf.where(pdf["environment"] == "UAT").dropna()
     pdf_list = envrmnt_vrble.iloc[0,:].to_list()
@@ -40,9 +40,9 @@ def db_crdntls_engine(re231_query_cw, re231_query_li, re231_query_tf, report_que
 
     # Read all the data from stage table
     engine = create_engine(db_connection)
-    rdf_cw = pd.read_sql_query(re231_query_cw, engine)
-    rdf_li = pd.read_sql_query(re231_query_li, engine)
-    rdf_tf = pd.read_sql_query(re231_query_tf, engine)
+    rdf_cw = pd.read_sql_query(number_query_cw, engine)
+    rdf_li = pd.read_sql_query(number_query_li, engine)
+    rdf_tf = pd.read_sql_query(number_query_tf, engine)
     report_data = pd.read_sql_query(report_query, engine)
     column_renames(rdf_cw, rdf_li, rdf_tf, report_data)
 
@@ -67,7 +67,7 @@ def detail_tab_func(rdf_cw_dtf, rdf_li_dtf, rdf_tf_dtf, report_data_dtf):
     detail_frmt =  wbsb.add_format({'align':'right', 'bold':True})
     detail_title_frmt =  wbsb.add_format({'bold':True, 'font_size':14})
     detail_tab_report_title =  wbsb.add_format({'bold':True, 'font_size':11})
-    wbsh.write('A1', "RE231 - Expenditures by Program Type and Age", detail_title_frmt)
+    wbsh.write('A1', "number - Expenditures by Program Type and Age", detail_title_frmt)
     wbsh.write('A7', "Child Welfare Payments", detail_tab_report_title)
     wbsh.write('A17', "Low Income Payments", detail_tab_report_title)
     wbsh.write('A27', "TANF Payments", detail_tab_report_title)
@@ -165,7 +165,7 @@ def legends_tab_func(writer):
 if __name__== "__main__":
     print("starting....................")
     # r refers raw string
-    file_path = 'C:\\Users\\rjakkula\\Documents\\DE\\ReportsPOC\\RE231.xlsx'
+    file_path = 'C:\\Users\\rjakkula\\Documents\\DE\\ReportsPOC\\number.xlsx'
     cred_path = 'C:\\Users\\rjakkula\\Documents\\DE\\db_credentials.csv'
 
     if os.path.isfile(file_path):

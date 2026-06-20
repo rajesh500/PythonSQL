@@ -1,3 +1,283 @@
+# Grains:
+Grain defines the level of detail represented by one row in a fact table.
+
+# Fact tables typically have four grain types:
+Transaction Grain – one row per transaction/event/order.
+Periodic Snapshot Grain – one row per entity at a fixed interval (daily, weekly, monthly).
+Accumulating Snapshot Grain – one row representing a process lifecycle that gets updated over time.
+Factless Fact Grain – records events or relationships without storing measures.
+
+
+Customer Raj places Order #1001:
+
+Order #1001
+------------
+Laptop     $1000 Qty=1
+Mouse      $20   Qty=2
+Keyboard   $50   Qty=1
+
+1. Transaction Grain
+Grain: One row per product purchased in an order.
+fact_sales
+order_id	customer_id	product_id	quantity	amount
+1001	        1	      Laptop	    1	    1000
+1001	        1	      Mouse	        2	    40
+1001	        1	      Keyboard	    1	    50
+Questions it answers
+What products sold yesterday?
+Top-selling products?
+Revenue by product?
+Revenue by customer?
+
+This is the most common fact table in e-commerce.
+
+2. Periodic Snapshot Grain
+Business wants daily inventory status.
+
+Grain: One row per product per day.
+fact_inventory_snapshot
+date_key	product_id	inventory_count
+20260616	Laptop	        500
+20260616	Mouse	        2000
+20260616	Keyboard	    1000
+20260617	Laptop	        495
+Questions it answers
+Inventory trend over time
+Stock available each day
+Days of inventory remaining
+
+Another example:
+
+Daily Customer Activity
+date_key	customer_id	orders_count	amount
+20260617	1	            3	        1500
+Grain:
+
+One row per customer per day.
+
+3. Accumulating Snapshot Grain
+Track order lifecycle.
+
+Grain: One row per order.
+
+fact_order_fulfillment
+order_id	order_date	packed_date	shipped_date	delivered_date
+1001	        Jun 1	    Jun 1	    Jun 2	        Jun 4
+
+Initially:
+
+order_id	order_date	packed_date	shipped_date	delivered_date
+1001	        Jun 1	    NULL	    NULL	        NULL
+
+As process progresses, same row gets updated.
+
+Questions it answers
+Average shipping time
+Delivery SLA
+Fulfillment efficiency
+
+4. Factless Fact Grain
+Track events without measures.
+
+Grain: One row per customer-product interaction.
+
+fact_product_view
+customer_id	product_id	date_key
+1	        Laptop	    20260617
+1	        Mouse	    20260617
+2	        Keyboard	20260617
+
+No sales amount or quantity.
+
+Questions it answers
+Which products were viewed?
+Conversion rate
+Customer engagement
+
+
+For an e-commerce platform, I would typically design:
+
+## Transaction Fact Table
+Grain: One row per product purchased in an order.
+Used for sales analytics.
+
+## Periodic Snapshot Fact Table
+Grain: One row per product per day.
+Used for inventory and daily metrics.
+
+## Accumulating Snapshot Fact Table
+Grain: One row per order lifecycle.
+Used for fulfillment tracking.
+
+## Factless Fact Table
+Grain: One row per customer interaction event.
+Used for clickstream and behavioral analytics.
+
+
+How to create a relation above tables with fact or 
+surrogate key will be foreign key between facts and dimension table.
+### grain one row per prodcut ### 
+## Dimension Tables
+dim_customer:
+| customer_key | customer_id | customer_name | city   |
+| ------------ | ----------- | ------------- | ------ |
+| 1            | C101        | Raj           | Dallas |
+| 2            | C102        | John          | Austin |
+
+dim_product
+| product_key | product_id | product_name | category    |
+| ----------- | ---------- | ------------ | ----------- |
+| 101         | P1001      | Laptop       | Electronics |
+| 102         | P1002      | Mouse        | Electronics |
+
+
+# dim_date
+| date_key | date       | month | year |
+| -------- | ---------- | ----- | ---- |
+| 20260617 | 2026-06-17 | June  | 2026 |
+
+
+Transaction Fact Table
+fact_sales
+Grain: One row per product per order
+| order_id | customer_key | product_key | date_key | quantity | amount |
+| -------- | ------------ | ----------- | -------- | -------- | ------ |
+| 1001     | 1            | 101         | 20260617 | 1        | 1000   |
+| 1001     | 1            | 102         | 20260617 | 2        | 40     |
+
+
+Periodic Snapshot Example
+fact_inventory_snapshot
+| date_key | product_key | inventory_count |
+| -------- | ----------- | --------------- |
+| 20260617 | 101         | 500             |
+| 20260617 | 102         | 2000            |
+
+
+Accumulating Snapshot Example
+fact_order_fulfillment
+| order_id | customer_key | date_key | packed_days | shipped_days | delivered_days |
+| -------- | ------------ | -------- | ----------- | ------------ | -------------- |
+| 1001     | 1            | 20260617 | 1           | 2            | 4              |
+
+
+Factless Fact Example
+fact_product_view
+| customer_key | product_key | date_key |
+| ------------ | ----------- | -------- |
+| 1            | 101         | 20260617 |
+| 1            | 102         | 20260617 |
+
+
+## let say if dimension table design has SCD type2 then how the data store be designed.
+
+| customer_key | customer_id | customer_name | city   | is_current |
+| ------------ | ----------- | ------------- | ------ | ---------- |
+| 1            | C101        | Raj           | Dallas | N          |
+| 2            | C101        | Raj           | Austin | Y          |
+
+
+fact_sales
+:
+| order_id | customer_key | amount |
+| -------- | ------------ | ------ |
+| 1001     | 1            | 100    |
+| 1002     | 2            | 200    |
+
+Order 1001 happened when Raj lived in Dallas.
+Order 1002 happened when Raj lived in Austin.
+## --> why are using customer_key instead of customer_id field. if we use customer ID in the fact_sales table and join with dimension, he made two transactions but the first order place when he was in which city.
+we weren't able to find. If we customer_key we will easily find it out.(refer above example).
+And also chance of business key can be changed from multiple source systems.
+customerID = C001, C5001, Cust001...
+joining condition will be customer_key from both fact and dimension tables.
+Here grain is one row per product and surrogate key be the foriegn key.
+
+Examples:
+dim_customer
+| customer_key | customer_id | customer_name | city    | is_current |
+| ------------ | ----------- | ------------- | ------- | ---------- |
+| 1            | C101        | Raj           | Dallas  | N          |
+| 2            | C102        | John          | Houston | N          |
+| 3            | C103        | Smith         | Austin  | Y          |
+| 4            | C101        | Raj           | Austin  | Y          |
+| 5            | C102        | John          | Seattle | Y          |
+
+
+fact_sales:
+| order_id | customer_key | amount |
+| -------- | ------------ | ------ |
+| 1001     | 1            | 100    |
+| 1002     | 2            | 200    |
+| 1003     | 3            | 300    |
+| 1004     | 4            | 500    |
+| 1005     | 5            | 700    |
+| 1006     | 4            | 250    |
+
+Raj Dallas  -> customer_key 1
+Raj Austin  -> customer_key 4
+
+John Houston -> customer_key 2
+John Seattle -> customer_key 5
+
+
+Ecommerce: grain is one row per product.
+let say i added a prodcut to cart and customer still searching and added few new one and some existing one
+then in the cart, new items will be added same items be increase the quantity. so the grain is one record per product.
+
+| order_line_id | order_id | customer_key | product_key | quantity | amount |
+| ------------- | -------- | ------------ | ----------- | -------- | ------ |
+| 1             | 1001     | 1            | 101         | 1        | 1000   |
+| 2             | 1001     | 1            | 102         | 2        | 40     |
+| 3             | 1001     | 1            | 103         | 1        | 50     |
+
+
+
+But in retail business, one row per product per each item or per scan.
+let say i scanned mil twice then system will not aggregate it will simple create a new item line number.
+
+Grain = One Row Per Scan Event
+Every barcode scan creates a row.
+
+| order_line_id | transaction_id | product_key | quantity | amount |
+| ------------- | -------------- | ----------- | -------- | ------ |
+| 1             | T1001          | Milk        | 1        | 5      |
+| 2             | T1001          | Bread       | 1        | 3      |
+| 3             | T1001          | Eggs        | 1        | 4      |
+| 4             | T1001          | Milk        | 1        | 5      |
+
+
+if the scan system aggregate then it will also be one row per product but still in walmart it goes as one row per product per scan/event/order.
+fact_sales
+| order_line_id | transaction_id | product_key | quantity | amount |
+| ------------- | -------------- | ----------- | -------- | ------ |
+| 1             | T1001          | Milk        | 1        | 5      |
+| 2             | T1001          | Bread       | 1        | 3      |
+| 3             | T1001          | Eggs        | 1        | 4      |
+| 4             | T1001          | Milk        | 1        | 5      |
+
+
+Using dates can also achieve above but date logic become complex.
+Example:
+SCD Type 2 Dimension
+| customer_key | customer_id | city   | effective_from | effective_to |
+| ------------ | ----------- | ------ | -------------- | ------------ |
+| 1            | C101        | Dallas | Jan 1          | Jan 31       |
+| 2            | C101        | Austin | Feb 1          | 9999-12-31   |
+
+If we want to now a customer transaction data between two effective dates
+first get the min and max as dates and between these dates pull all the data.
+Suppose you have:
+10 billion fact rows
+50 million customer history rows
+
+Every query would need a date-range join:
+fact.order_date BETWEEN dim.effective_from AND dim.effective_to
+These joins are expensive.
+
+the traditional approach is use surrogate key as foriegn key even your using effective start and end dates.
+
+
 Types of Data Models:
 1. Conceptual
 2. Logical

@@ -56,11 +56,16 @@ source:
 Allow schema drift: if source type changes column freqently it allows all fields to flow through transformation  to the sink. 
 Infer drifted column types: auto-detect column data types.
 
+copy activity:
+source:
+File Path in Dataset:  You specify the exact file name in the dataset.
+Wildcard File Path:  Read multiple files matching a pattern.   (*.csv)
+List of Files (Dynamic): Pass file names dynamically.
+
 
 Sink:
 copy behaviour:
 Preserve Hierarchy:
-
 Maintains the same folder structure as the source.
 
 Source:
@@ -92,6 +97,209 @@ file3.csv
 
 Sink:
 merged.csv
+
+Max rows per file  --> max number of rows in a file.
+ 
+
+
+source is table:
+Table, query, stored procedure
+partition option None, Physical partitions of table, Dynamic range.
+
+settings:
+Maximum data integration unit  --> DIU's increase for processing large files (DIU means like cluster).
+Degree of copy parallelism   --> enable parallem copying mechanism
+Fault tolerance  --> if any small kind of errors ouccured during the process, still it process.
+                      Skip incompatible rows
+                      Skip missing files
+                      Log rejected records
+`
+
+1. How do you copy 1 TB of data efficiently?
+Enable partitioning
+Enable parallel copy
+Increase DIUs
+Use staging
+
+
+2. What is Parallel Copy?
+ADF splits data and copy parallel   (enable Degree of copy parallelism).
+
+3. What issues have you faced with Copy Activity?
+Slow throughput
+Timeouts
+Network issues
+Schema mismatch
+Source locking
+Partition skew
+Small file problem
+
+4. How do you troubleshoot a slow Copy Activity?
+Microsoft-style answer
+Understand the issue
+Check throughput
+    MB/s
+    Rows/s
+Identify bottleneck
+    Source
+    IR
+    Network
+    Sink
+Check DIU and parallelism
+Review source query performance
+Apply optimization
+
+
+5.What partition options are available?
+
+For relational sources:
+Physical Partitions
+Dynamic Range Partition
+Hash Partition
+
+
+6. Copy Activity is running for 5 hours. What do you do?
+
+Answer:
+Check throughput
+Check source query
+Check DIU
+Check parallel copy
+Check IR performance
+Check sink bottleneck
+
+
+7. 500 GB file is failing. How do you handle it?
+
+Answer:
+Split file
+Use partitioning
+Increase DIU
+Enable staging
+Use Databricks if transformation required
+
+
+
+8. let us say a 100GB file is processing in between after 60 GB processed pipeline is failed.
+How do you process only the remaining 40 GB?
+
+Unfortunately, Copy Activity does not support checkpoint restart within a file.
+If a 100 GB CSV fails at 60 GB:
+Next run starts from beginning ADF will copy the entire file again.
+
+This can be processing with some option-1:
+Split Files (100GB into multiple files)
+process file by file if pipeline failed at any file we can rerun that specific file.
+files (100GB)
+customers_part1.csv
+customers_part2.csv
+customers_part3.csv
+customers_part4.csv
+
+pipeline flow:
+Get Metadata
+ForEach
+Copy Activity
+
+option-2: Watermark-Based Processing
+
+option-3: Databricks Checkpointing
+
+if cluster crashes: Restart from checkpoint
+
+
+9. What if the file is 500 GB and cannot be split?
+I would use a distributed processing framework such as Databricks/Spark to read the file in partitions and leverage checkpointing. Copy Activity is primarily a data movement service and does not provide record-level recovery within a file.
+
+10. Copy Activity Slow
+
+Question:
+A Copy Activity that normally finishes in 20 minutes is taking 2 hours. How do you troubleshoot?
+
+Expected areas:
+
+Source bottleneck
+Sink bottleneck
+IR performance
+Network latency
+DIU settings
+Parallel copy settings
+File size increase
+
+
+11. Watermark table updated but pipeline failed. How do you avoid missing records?
+Correct Approach
+Update Watermark Only After Successful Load
+
+Flow:
+Read Current Watermark
+        ↓
+Extract Data
+        ↓
+Load Data
+        ↓
+Validation
+        ↓
+Update Watermark
+
+Not:
+Extract
+Update Watermark
+Load
+
+
+12. A folder contains 1000 files. How do you process only the latest file?
+Use this ADF pattern:
+
+Get Metadata
+   ↓
+Filter / ForEach
+   ↓
+Find latest file by lastModified
+   ↓
+Copy Activity
+
+
+13.Enable Partitioning
+Partitioning is configured in the Source tab.
+
+Example: SQL Server Source
+Table:
+Customer
+100 Million Records
+
+Source Tab
+Partition Option
+
+Choose:
+Dynamic Range
+
+Specify:
+Partition Column = CustomerID
+
+ADF generates:
+Partition 1:
+CustomerID 1-25000000
+Partition 2:
+CustomerID 25000001-50000000
+Partition 3:
+CustomerID 50000001-75000000
+Partition 4:
+CustomerID 75000001-100000000
+
+All run simultaneously. With partitioning: 4 Parallel Queries
+
+
+
+14: What is Physical Partition?
+If the source database table is already partitioned at the database level, ADF can use those partitions directly.
+read data those partition by parallel. 
+without partition one single query read it took 40 minutes. 
+if table has 4 partition, 4 queries will read totally take 10 minutes.
+
+
+
+
 
 
 Data Flow:
@@ -625,7 +833,7 @@ Azure Event Hubs is a highly scalable event streaming platform designed to inges
 
 
 
-
+ADF deployment will be done using arm template (Azure devops CI/CD).
 
 
 

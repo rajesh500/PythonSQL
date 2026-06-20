@@ -2,10 +2,10 @@ import boto3
 from botocore.client import Config
 
 # Replace with your AWS access key, secret key, and region
-access_key_id='AKIAJWZ2ZZGXLUNQBHDA'  
-secret_access_key='+7aIlRYlsg5NzHyZjSUf+KdNhCxyh30YTOHz7jGqRBRPF4bf8eVpF2NZ7lzCZfZk'
+access_key_id='dsdfsdfsdfdsf'  
+secret_access_key='ddfgfddfdfgdsfds'
 aws_region_name='us-east-1'
-bucket_name = 'sit.chats'
+bucket_name = 'dev'
 
 
 file_path = r'Unix\Data\cars.csv'

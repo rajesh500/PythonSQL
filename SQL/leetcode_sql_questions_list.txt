@@ -31,7 +31,7 @@ Task                                                                            
 2118. Build the Equation
 2153. The Number of Passengers in Each Bus II
 2173. Longest Winning Streak
-2199. Finding the Topic of Each Post
+2199. Finding the Topic of Each Post                                                2
 2252. Dynamic Pivoting of a Table
 2253. Dynamic Unpivoting of a Table
 2362. Generate the Invoice
@@ -44,22 +44,22 @@ Task                                                                            
 2991. Top Three Wineries
 2994. Friday Purchases II
 2995. Viewers Turned Streamers
-3052. Maximize Items
+3052. Maximize Items                                                                 2
 3057. Employees Project Allocation
 3060. User Activities within Time Bounds
 3061. Calculate Trapping Rain Water
 3103. Find Trending Hashtags II
 3156. Employee Task Duration and Concurrent Tasks
 3188. Find Top Scoring Students II
-3214. Year on Year Growth Rate                                                          2
-3236. CEO Subordinate Hierarchy                                                         2
+3214. Year on Year Growth Rate                                                        2                                                        2
+3236. CEO Subordinate Hierarchy                                                       2
 3268. Find Overlapping Shifts II
-3368. First Letter Capitalization                                                       2
+3368. First Letter Capitalization                                                     2
 3374. First Letter Capitalization II
 3384. Team Dominance by Pass Success
 3390. Longest Team Pass Streak
 3401. Find Circular Gift Exchange Chains
-3451. Find Invalid IP Addresses                                                         2
+3451. Find Invalid IP Addresses                                                       2
 3482. Analyze Organization Hierarchy
 3554. Find Category Recommendation Pairs
 3617. Find Students with Study Spiral Pattern

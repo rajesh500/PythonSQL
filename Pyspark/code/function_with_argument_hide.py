@@ -13,7 +13,7 @@ tpl = list(cal.creden())
 print(tpl[0])
 
 engine = create_engine(f'postgresql://{tpl[2]}:{tpl[3]}@{tpl[0]}:5432/{tpl[1]}')
-sheet1 = pd.read_sql_table('cr200_log', engine, schema='lower_backup')
+sheet1 = pd.read_sql_table('CB200_log', engine, schema='lower_backup')
 print(sheet1)
 
 print(sheet1.columns)
