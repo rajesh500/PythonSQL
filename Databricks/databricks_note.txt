@@ -678,7 +678,57 @@ Proper Partitioning
 
 
 
+### checkpoint and autoloader:
+I have a large file 500GB or 2TB(file csv or parquet). pipeline is failed after processing 300GB data pipeline is failed how to restart it without processing entire file again.
+Using check point concept we can process it but completely using spark we were not able to achieve it.
+spark doesn't support the checkpoint, it has restart it from the begining.
 
+but this can achieve using autoloader.
+source path:
+target path:
+checkpoint locator path:
+
+During the writing, mention this checkpoint locator path, this auto loader  will handle checkpoint incase of failure.
+during this process as well split the large file into multiple files.
+
+
+from pyspark.sql.functions import current_timestamp, input_file_name
+
+source_path = "abfss://apexusdev@apexusdev.dfs.core.windows.net/input/parquet/"
+target_path = "abfss://apexusdev@apexusdev.dfs.core.windows.net/delta/customer/"
+checkpoint_path = "abfss://apexusdev@apexusdev.dfs.core.windows.net/checkpoints/customer/"
+
+df = spark.readStream \
+    .format("cloudFiles") \
+    .option("cloudFiles.format", "parquet") \
+    .load(source_path)
+
+final_df = df.withColumn("source_file", input_file_name()) \
+             .withColumn("processed_time", current_timestamp())
+
+query = final_df.writeStream \
+    .format("delta") \
+    .option("checkpointLocation", checkpoint_path) \
+    .option("mergeSchema", "true") \
+    .outputMode("append") \
+    .trigger(availableNow=True) \
+    .start(target_path)
+
+query.awaitTermination()
+
+
+
+### without auto loader
+Without using autoloader can we achieve this.
+Yes, but it is not as clear an autoloader.
+I will create a control table with status as success.
+
+First i will read all files from path and create a list.
+second i will read all entries from the control table into another list.
+Now if first list element is not in the second list then read from source and write into the target.
+Once write into the target i will make entry again into the control table of the file is processed.
+
+This will be done in loop.
 
 
 

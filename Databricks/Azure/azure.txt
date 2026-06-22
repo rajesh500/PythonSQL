@@ -301,6 +301,134 @@ if table has 4 partition, 4 queries will read totally take 10 minutes.
 
 
 
+1. Tell me about a performance issue you faced in Copy Activity.
+
+Sample Answer:
+In one of my projects, we had an ADF Copy Activity that loaded approximately 300 million records daily from an on-premises SQL Server into ADLS. The pipeline was expected to finish within 1 hour, but suddenly the runtime increased from 45 minutes to nearly 3 hours, causing SLA violations.
+
+Step 1: Understand the Issue
+I first verified whether the issue was isolated to a single run or occurring consistently. After reviewing the monitoring history, I found that multiple recent runs were experiencing similar delays.
+
+Step 2: Identify the Bottleneck
+I checked the Copy Activity metrics such as rows read, rows written, throughput, DIU usage, and execution duration. Throughput had dropped significantly compared to previous successful runs.
+
+Step 3: Check Recent Changes
+I spoke with the source database team and found that the source table volume had increased significantly due to a new business process. The source query was now reading a much larger dataset.
+
+Step 4: Analyze Logs and Metrics
+I noticed that partitioning was not enabled. The Copy Activity was executing a single query and reading all records sequentially. Source CPU utilization was also high during the load window.
+
+Step 5: Root Cause
+The root cause was that the increased data volume was being processed through a single-threaded read operation, creating a bottleneck at the source.
+
+Step 6: Fix
+I enabled Dynamic Range Partitioning using the primary key column and increased the Degree of Copy Parallelism. This allowed ADF to read multiple partitions concurrently. I also increased the DIU setting after validating source capacity.
+
+Example:
+Partition 1: 1–75 million
+Partition 2: 75–150 million
+Partition 3: 150–225 million
+Partition 4: 225–300 million
+Result
+
+After implementing partitioning and parallel copy, the pipeline runtime dropped from approximately 3 hours to around 50 minutes, bringing it back within SLA.
+
+Prevention:
+To prevent future issues, I added monitoring for throughput trends, row counts, and execution duration. We also established a review process whenever source data volume increased significantly.
+
+Follow-up Questions They May Ask
+Q: Why did you choose that partition column?
+Answer:
+It was a numeric primary key with an even distribution and proper indexing, making it suitable for Dynamic Range Partitioning.
+
+Q: Why not just increase DIU?
+Answer:
+Increasing DIU alone would not solve the source read bottleneck. The major issue was the lack of parallel reads, so partitioning provided the biggest improvement.
+
+Q: How did you verify the bottleneck was at the source?
+Answer:
+I compared source CPU utilization, query execution times, and ADF throughput metrics. The source database showed high utilization during the load window, confirming the bottleneck.
+
+
+
+
+Issues:
+1. Source Table Missing Index:
+SELECT * FROM Orders
+WHERE ModifiedDate > @Watermark 
+
+No index on: ModifiedDate
+
+
+2. Data Skew:
+Data:
+
+US = 90%
+India = 5%
+Others = 5%
+Symptoms
+One partition runs 2 hours
+Others finish in 2 minutes
+Root Cause
+
+Bad partition column.
+
+Fix
+Partition using:
+CustomerID
+OrderID
+
+
+3. small file problem:
+Source:
+
+2 Million CSV Files
+
+Each:
+
+10 KB
+Symptoms
+Copy Activity slow
+Get Metadata slow
+Root Cause
+
+Metadata overhead.
+
+Fix
+Merge files.
+Convert to:
+Parquet
+Delta
+
+
+
+
+2. What is the largest dataset you moved and what challenges did you face?
+The largest dataset I worked with was approximately 20 TB of historical customer and transaction data migrated from on-prem SQL Server to Azure.
+
+Architecture
+On-Prem SQL Server
+        ↓
+ADF Copy Activity
+        ↓
+ADLS Gen2 (Bronze)
+        ↓
+Databricks
+        ↓
+Delta Tables
+        ↓
+Gold Layer
+
+
+challenges:
+network failure
+network throughout slowness
+one table has 4GB data after loading 1 GB data pipeline was failed due to network issue. deleted the target data and re-process it.
+copy activity doesn't have check-point mechanism to restart from were it was failed.
+We have a another approach of handling this, spliting data into multiple files and process it but since it was first time moving data from on-prem to cloud.
+we want to issue want of issues we will face, this we are doing in UAT. There is no SLA's here.
+
+
 
 Data Flow:
 we can define the compute size:

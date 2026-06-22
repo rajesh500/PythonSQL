@@ -2,14 +2,14 @@
 Task                                                                            Level2
 185. Department Top Three Salaries
 262. Trips and Users
-569. Median Employee Salary
+569. Median Employee Salary                                                         2
 571. Find Median Given Frequency of Numbers
 579. Find Cumulative Salary of an Employee
 601. Human Traffic of Stadium                                                       2
 615. Average Salary: Departments VS Company
 618. Students Report By Geography
 1097. Game Play Analysis V
-1127. User Purchase Platform
+1127. User Purchase Platform                                                    
 1159. Market Analysis II
 1194. Tournament Winners
 1225. Report Contiguous Dates                                                       2
@@ -35,7 +35,7 @@ Task                                                                            
 2252. Dynamic Pivoting of a Table
 2253. Dynamic Unpivoting of a Table
 2362. Generate the Invoice
-2474. Customers With Strictly Increasing Purchases
+2474. Customers With Strictly Increasing Purchases                                  2                             
 2494. Merge Overlapping Events in the Same Hall
 2701. Consecutive Transactions with Increasing Amounts
 2720. Popularity Percentage                                                         2
