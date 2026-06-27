@@ -732,6 +732,391 @@ This will be done in loop.
 
 
 
+##   filename 
+why file name starts with part-0000, part-0001..... when your writing into target path using pyspark dataframe.
+ex: read a customer.csv file and write, once you write file name should like this part-00000-5aee2810-cc96-48a1-ba89-44acd2eca523-c000.csv
+
+This is because of Spark is a distributed processing engine, not a single-machine file writer.
+Spark splits data across multiple partitions:
+Partition 1
+Partition 2
+Partition 3
+Partition 4
+
+Each executor writes its own file:
+part-00000
+part-00001
+part-00002
+part-00003
+
+spark doesn't know which executor finish, how many files generated.
+merge all file into a single and write into temp target location. The file name still be part-00000-5aee2810-cc96-48a1-ba89-44acd2eca523-c000.csv
+After the write operation rename it and move to main target location.
+
+In order to merge all df.coalesce(1).write.mode("").save("path")
+
+## secrets
+ADLS connection secrets and DB related credentials will be stored in key vault 
+and those  key valut information store in databrics secrets and will be used in the notebooks.
+client_secret = dbutils.secrets.get(scope="kv-scope", key="client-secret")
+
+
+
+
+
+
+## Lakeflow Declarative pipelines:
+Lakeflow Declarative Pipelines (formerly Delta Live Tables - DLT) is Databricks' declarative framework for building batch and streaming ETL pipelines in SQL and Python. Instead of writing orchestration logic yourself, you declare the desired tables and transformations, and Lakeflow manages dependency resolution, execution, retries, autoscaling, monitoring, and incremental processing.
+
+
+Traditional Spark ETL
+Read Bronze
+      ↓
+Transform
+      ↓
+Write Silver
+      ↓
+Read Silver
+      ↓
+Transform
+      ↓
+Write Gold
+
+
+Lakeflow
+You simply define:
+Bronze
+    ↓
+Silver
+    ↓
+Gold
+
+Example:
+Bronze load:
+CREATE OR REFRESH STREAMING TABLE bronze_orders
+AS
+SELECT *
+FROM STREAM read_files(
+  'abfss://raw@storageaccount.dfs.core.windows.net/orders/',
+  format => 'csv',
+  header => true
+);
+
+
+Bronze to silver load:
+CREATE OR REFRESH STREAMING TABLE silver_orders
+(
+  CONSTRAINT valid_order_id EXPECT (order_id IS NOT NULL) ON VIOLATION DROP ROW,
+  CONSTRAINT valid_amount EXPECT (amount > 0) ON VIOLATION DROP ROW
+)
+AS
+SELECT
+  CAST(order_id AS BIGINT) AS order_id,
+  CAST(customer_id AS BIGINT) AS customer_id,
+  CAST(product_id AS BIGINT) AS product_id,
+  CAST(amount AS DOUBLE) AS amount,
+  CAST(order_date AS DATE) AS order_date
+FROM STREAM bronze_orders;
+
+
+
+Gold materialized view    (don't create a table if we have to do aggregation create a materalized view)
+Aggregated reporting layer.
+
+CREATE OR REFRESH MATERIALIZED VIEW gold_daily_sales
+AS
+SELECT
+  order_date,
+  COUNT(*) AS total_orders,
+  SUM(amount) AS total_sales
+FROM silver_orders
+GROUP BY order_date;
+
+
+
+Delta Live Tables has been renamed and expanded into Lakeflow Declarative Pipelines.
+Additional feature built on top of DLT is:
+
+DLT CDC need to be implement using merge concept, custom logic...
+Lakeflow: Auto CDC feauture no code
+
+DLT no materialized view support.
+lakeflow supports it.
+
+
+
+## DPM:
+Direct Publishing Mode (DPM) is a Lakeflow Declarative Pipelines feature that changes how pipeline outputs are published to Unity Catalog.
+
+Architecture:
+Legacy
+ADLS
+   ↓
+Pipeline
+   ↓
+LIVE.bronze_orders
+   ↓
+LIVE.silver_orders
+   ↓
+LIVE.gold_orders
+
+Direct Publishing Mode:
+ADLS
+   ↓
+Pipeline
+   ↓
+sales_catalog.bronze.orders
+   ↓
+sales_catalog.silver.orders
+   ↓
+sales_catalog.gold.orders
+
+
+In legacy architecture even though it is a live pipeline, data will not directly load into the table.
+A LIVE intermediate layer is added internally and then load into the table. but using DPM their is no intermediate layer directly load into the table.
+
+
+## 
+Auto Loader:  (incrementally processing new file)   ( this concept is for only files)
+Auto Loader is a Databricks feature that automatically detects and incrementally processes new files arriving in cloud storage (such as ADLS, S3, or GCS).
+Instead of reading the entire folder every time, Auto Loader remembers which files have already been processed and only reads new ones.
+
+Exmaple:
+df = (
+    spark.readStream
+         .format("cloudFiles")
+         .option("cloudFiles.format", "csv")
+         .load("/orders")
+)
+
+
+Auto loader vs DLT:
+Auto Loader is for file ingestion.
+DLT (now Lakeflow Declarative Pipelines) is for building end-to-end ETL pipelines.
+
+
+AUTO CDC is not a setting that you enable with a checkbox.
+You create a CDC flow in a Lakeflow Declarative Pipeline. Databricks then automatically applies inserts, updates, and deletes into a target streaming table.
+
+
+
+## Metadata driven framework:
+## Stop Writing ETL Code for Every New Pipeline:
+
+As organizations modernize their data platforms, one challenge continues to surface:
+
+Every new source requires a new ETL pipeline.
+Every new business rule requires SQL code changes.
+Every schema change requires code updates, testing, and deployment.
+
+Over time, ETL logic becomes scattered across notebooks, SQL scripts, stored procedures, and configuration files, making pipelines difficult to maintain, scale, and troubleshoot.
+
+
+What Does Metadata Store?
+
+Typical metadata tables contain:
+Source system details
+Source and target table names
+File paths
+Column mappings
+Data types
+Primary keys
+Watermark columns
+Load type (Full / Incremental)
+Transformation rules
+Validation rules
+Target write strategy
+
+Example:
+Source Table  Target Table  Load Type Watermark Active
+Customer  dim_customer  Incremental ModifiedDate  Yes
+Orders  fact_orders Full  - Yes
+
+
+
+How It Works:
+A generic pipeline starts execution.
+The pipeline reads metadata from configuration tables.
+It determines:
+Which source to read
+Which transformations to apply
+Whether to perform a full or incremental load
+Where to write the data
+The framework executes the pipeline dynamically without requiring code changes.
+
+Benefits:
+Reusable ETL framework
+Faster onboarding of new data sources
+Minimal code changes
+Easier maintenance
+Consistent pipeline behavior
+Centralized business rules
+Reduced deployment effort
+Better governance and auditing
+Improved scalability
+Real-World Example
+
+Without a metadata-driven framework:
+
+To onboard 100 source tables, developers typically create:
+
+100 ADF pipelines
+100 notebooks
+100 SQL transformation scripts
+
+With a metadata-driven framework:
+
+Build one generic pipeline.
+Add 100 metadata records.
+The framework processes all 100 tables dynamically using the same codebase
+
+
+
+
+
+
+
+
+Traditional ETL Approach: developing three pipeline for each table.
+Suppose your company has 3 source tables:
+Customer
+Orders
+Products
+
+
+Metadata Driven ETL
+
+Instead of writing code, you create a metadata table.
+
+Metadata Table
+Source Table    Target Table    Load Type   Filter        Watermark
+customer        dim_customer    Full        isActive=1    NULL
+orders          fact_orders     Incremental NULL          modified_date
+products        dim_product      Full        NULL         NULL
+
+Notice there is no PySpark code for individual tables.
+
+Generic Notebook
+Now write one notebook.
+metadata = spark.read.table("etl_metadata")
+Loop through every row.
+
+for row in metadata.collect():
+    source = row.source_table
+    target = row.target_table
+    df = spark.read.table(source)
+    if row.filter:
+        df = df.filter(row.filter)
+    df.write.mode("overwrite").saveAsTable(target)
+
+Done.
+
+
+
+Notebook:
+if load_type == "Incremental":
+
+    df = spark.sql(f"""
+        SELECT *
+        FROM {source}
+        WHERE modified_date > '{watermark}'
+    """)
+
+
+
+              Metadata Table
+                     │
+                     │
+          ┌──────────▼──────────┐
+          │  Generic ADF Pipeline │
+          └──────────┬──────────┘
+                     │
+              Generic Notebook
+                     │
+        Reads metadata dynamically
+                     │
+        Builds SQL/Transformations
+                     │
+                Loads Target
+
+No matter whether you have 10 tables, 100 tables, or 1,000 tables, you still use:
+
+1 generic ADF pipeline
+1 generic Databricks notebook
+1 metadata table
+
+The only thing that changes is the metadata.
+
+
+
+simple logic for multiple tables go with metadatadrive:
+
+complex logic, no way of creating generic then completely develop a separate pipeline for each.
+complex logic for only certain field and rest is same process then go with hybrid approach.
+
+Example:
+10 tables, each table has two fields of complex logic then read all fields from table and 2 field dervice the complex logic in notebook for each field of those ten tables.
+rest develop a generic pipeline and combine all based on table.
+
+
+Hybrid Architecture:
+ADF Metadata
+      │
+      ▼
+Generic Pipeline
+      │
+      ▼
+Generic Notebook
+      │
+      ├─────────────┐
+      │             │
+Simple Load     Complex Load
+      │             │
+      ▼             ▼
+Generic Logic   Custom Notebook
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -869,7 +869,19 @@ Delta Lake / SQL
 Airflow (Advanced workflow / cross-system orchestration)
 
 
+# adf to databrics notebook
+Creating a linked service from adf to databricks.
+In pipeline get metadata activity select the databricks notebook.
+In linked service need to select the cluster type.  here cluster is from databricks end. in order to run notebook need a cluster from databricks
+1. New job cluster
+2. Existing interactive cluster
+3. Existing instance pool
+4. serverless
 
+Authentication type:
+Access Token
+managed service identity 
+user-assigned managed identity
 
 
 
@@ -965,6 +977,24 @@ ADF deployment will be done using arm template (Azure devops CI/CD).
 
 
 
+
+
+
+ADF:
+Lookup Activity:
+Read a small amount of data and pass it to the next activity. It is not designed for moving large datasets.
+use-case:
+configuration,   (keep schema name, table name, value.... instead of harding keep value in table and use dynamically in pipeline with ADF).
+table name,    (metadata -drive approach loading multiple tables.)
+watermark. 
+
+
+lookup               vs             get metadata:
+Lookup	                            Get Metadata
+Reads data/content	                Reads metadata
+SQL query	                        File properties
+Reads table rows	                Reads file name, size, last modified, child items
+Used for configuration tables	    Used for file/folder information
 
 
 

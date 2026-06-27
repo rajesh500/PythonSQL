@@ -3883,3 +3883,44 @@ dictionary is active, in-memory data structure. reading and modifying data insid
 
 Exmaple: dictionary is like an idea in head, json is same idea written in paper to hand over to someone else.
 
+
+
+
+## What happens when you call collect() on a large DataFrame? What should you do instead?
+df.collect()
+Spark brings all rows from all worker nodes to the driver node.
+
+If the DataFrame is large, this can cause:
+
+Driver out-of-memory
+Cluster crash
+Slow performance
+Network bottleneck
+Job failure
+
+What to do instead
+Use distributed actions:
+df.write.format("delta").save("/mnt/output")
+
+For preview:
+df.show(10)
+
+
+
+
+## Explain broadcast joins. When does Spark choose one automatically and when do you force it?
+A broadcast join means Spark sends the small DataFrame to every executor, so the big DataFrame does not need shuffle.
+
+When to force broadcast
+When you know one table is small but Spark does not choose broadcast because:
+Stats are missing
+Table size estimate is wrong
+Small table is filtered at runtime
+Small Table Exceeds Broadcast Threshold  (50MB > 10MB)
+Broadcast Disabled
+Adaptive Query Execution (AQE) Disabled:
+Original table = 100 MB
+After filter = 2 MB
+
+Spark still won't broadcast because it made the decision earlier.
+With AQE enabled, Spark can change the join strategy during execution.
