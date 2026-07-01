@@ -998,7 +998,17 @@ Used for configuration tables	    Used for file/folder information
 
 
 
+variables and parameters:
+Variables are stored within the pipeline and are pipeline-scoped. 
+They exist only for the duration of a single pipeline execution and are used to hold runtime values such as watermarks, 
+counters, or status flags. Once the pipeline completes, the variables are discarded and are not available to 
+other pipelines or future pipeline runs.
 
+
+
+Parameters are input values passed to a pipeline at runtime, either manually, through a trigger, or from a parent pipeline. 
+They are initialized before the pipeline starts and remain read-only throughout the execution. 
+We typically use parameters for values such as file names, folder paths, table names, and environment names to make pipelines reusable.
 
 
 

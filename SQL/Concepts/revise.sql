@@ -805,3 +805,9 @@ instead of scanning entire table it will fetch the data based on index.
 4. merge join  (sorted merge join)
 A Sort Merge Join in PostgreSQL combines two datasets by first ensuring both are sorted on the join key and then merging them in a single, synchronized pass
 5. nestloop 
+
+
+
+FILTER:
+SUM(salary) FILTER (WHERE department = 'IT') AS it_salary
+count(*) FILTER(where dept = 'Sales') as sales_count,

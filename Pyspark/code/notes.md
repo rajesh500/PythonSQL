@@ -3924,3 +3924,26 @@ After filter = 2 MB
 
 Spark still won't broadcast because it made the decision earlier.
 With AQE enabled, Spark can change the join strategy during execution.
+
+
+
+# try_cast:
+try_cast is available in newer versions of Spark SQL (Spark 4.x). It attempts to cast a value and returns NULL instead of throwing an error if the conversion fails.
+
+Ex:
+df = df.withColumn(
+    "Age_Int",
+    expr("try_cast(Age AS INT)")
+)
+
+Output:
+Age	Age_Int
+25	25
+30	30
+ABC	NULL
+45	45
+
+
+:try_to_date
+try_to_date("JD", "yyyy-MM-dd") 
+otherthan this format date value, remaining value return as NULL.

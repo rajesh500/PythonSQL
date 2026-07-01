@@ -279,6 +279,144 @@ standard (15.4 LTS) long time stand LTS
 
 use photon acceleration: databricks engine
 
+Computer:
+Three types
+1. Job Cluster
+2. Interactive Cluster
+3. Serverless compute for Job
+
+
+Job Cluster vs Interactive Cluster:
+Job Cluster:
+Mainly used for production Jobs
+Lower cost
+Dedicate to one Job
+Auto Scaling supported
+Once job run is completed, cluster will be stopped running.
+
+
+
+Interactive Cluster:
+Development and testing purpose
+Higher cost because continuosly running when notebook start execute immedaitely executes
+This cluster(pool) will be shared by multiple users and notebooks.
+Auto Scaling supported.
+
+Serverless Compute:
+You don't create or manage clusters. Databricks provisions compute automatically for each job.
+
+
+
+Liquid Clustering:
+Liquid Clustering is a modern data layout optimization feature in Delta Lake that replaces many traditional uses of partitioning and Z-Ordering. It allows Delta tables to continuously reorganize data based on clustering keys without requiring static partitions.
+
+Why was Liquid Clustering introduced?
+
+Traditional partitioning has limitations:
+
+Too many partitions → millions of small files.
+Too few partitions → poor query performance.
+Changing partition columns later is difficult.
+Frequent updates can lead to data skew.
+
+
+
+Liquid Clustering + optimize using both this reorganize of data will be done.
+
+Traditional Partitioning
+sales/
+   year=2025/
+      month=01/
+      month=02/
+   year=2026/
+      month=01/
+
+
+Liquid Clustering
+Sales Delta Table
+        │
+        ▼
+CLUSTER BY(customer_id)
+        │
+        ▼
+OPTIMIZE
+        │
+        ▼
+Files are reorganized automatically
+
+There are no static partition folders. Delta organizes the data internally to improve data skipping.
+
+
+
+CREATE TABLE sales
+(
+    order_id INT,
+    customer_id INT,
+    order_date DATE,
+    amount DECIMAL(10,2)
+)
+USING DELTA
+CLUSTER BY (customer_id);
+
+
+OPTIMIZE sales;
+
+
+
+
+Liquid Clustering vs Z-Ordering:
+Z-Ordering is a one-time optimization technique.
+
+example:
+CustomerID  OrderDate
+101         2025-01-01
+500         2025-01-03
+101         2025-01-05
+300         2025-01-07
+101         2025-01-08
+
+Run:
+
+OPTIMIZE sales
+ZORDER BY (customer_id);
+
+Spark rewrites the files so rows with similar customer_id values are placed closer together.
+
+Result:
+
+File1
+101
+101
+101
+
+File2
+300
+500
+
+
+Limitation
+
+Tomorrow another 100 GB arrives.
+
+The new files are not automatically Z-Ordered.
+
+
+Every new data got loaded into the table z-ordering need to be run to reorganize the data.
+
+Liquid Clustering is a persistent table property that defines how data should be organized over time.
+Continuously organize data.
+No need to rerun it to reorganize the data.
+
+
+
+Persistance: storage can be done at three levels.
+from pyspark import StorageLevel
+
+df.persist(StorageLevel.MEMORY_ONLY)
+df.persist(StorageLevel.MEMORY_AND_DISK)
+df.persist(StorageLevel.DISK_ONLY)
+
+
 workflow - jobs 
 Task level:
 type: notebook, pythons cript, python wheel, SQL, delta live tables pipeline, dbt, JAR, spark submit, run job, if/else condition, for each 
@@ -761,6 +899,66 @@ and those  key valut information store in databrics secrets and will be used in 
 client_secret = dbutils.secrets.get(scope="kv-scope", key="client-secret")
 
 
+
+Deep clone vs Swallow clone:
+
+CREATE TABLE target_table
+DEEP CLONE source_table;
+
+cloned table doesn't dependent on main table (like, update, delete, insert).
+swallow clone dependent on main table.
+
+
+Deep Clone only supports Delta tables. It does not support views.
+
+
+
+
+CDF: (Change Data Feed)
+CDF (Change Data Feed) in Databricks Delta Lake is a feature that records row-level changes (inserts, updates, and deletes) made to a Delta table. Instead of reading the entire table every time, downstream processes can read only the changes since a specific version or timestamp.
+
+This is a property in the delta table, need to be enable it during creating a table or after creating the table.
+CREATE TABLE customers (
+    customer_id INT,
+    name STRING,
+    city STRING
+)
+USING DELTA
+TBLPROPERTIES (
+    delta.enableChangeDataFeed = true
+);
+
+
+or Alter table customer set TBLPROPERTIES (
+    delta.enableChangeDataFeed = true
+);
+
+
+Ex: customer is table:
+today data got inserted it will store in specific version1
+next day some inserted, deleted, and update it will store in specific version2
+Now query this table after version1 what all the changes happended on version2 this can be tracked using some specific metadata columns.
+
+_change_type
+_commit_version
+_commit_timestamp
+
+
+SELECT *
+FROM table_changes('silver_customers', 1);
+
+SELECT *
+FROM table_changes('silver_customers', 2);
+
+
+Every time querying this table need to know pervious what version we queried or pulled in order to know that 
+create a control table and store the pulled version and update to next version.
+
+
+CREATE TABLE cdf_control (
+    table_name STRING,
+    last_processed_version BIGINT
+);
 
 
 
