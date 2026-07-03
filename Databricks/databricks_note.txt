@@ -915,7 +915,8 @@ Deep Clone only supports Delta tables. It does not support views.
 
 
 CDF: (Change Data Feed)
-CDF (Change Data Feed) in Databricks Delta Lake is a feature that records row-level changes (inserts, updates, and deletes) made to a Delta table. Instead of reading the entire table every time, downstream processes can read only the changes since a specific version or timestamp.
+CDF (Change Data Feed) in Databricks Delta Lake is a feature that records row-level changes (inserts, updates, and deletes) made to a Delta table. 
+Instead of reading the entire table every time, downstream processes can read only the changes since a specific version or timestamp.
 
 This is a property in the delta table, need to be enable it during creating a table or after creating the table.
 CREATE TABLE customers (
@@ -1279,10 +1280,225 @@ Generic Logic   Custom Notebook
 
 
 
+## Delta Lake vs Apache Iceberg:
+
+Feature                              Delta Lake                                          Apache Iceberg
+Primary Ecosystem               Optimized for Databricks                        Designed for multi-engine environments
+Metadata                        _delta_log (JSON + checkpoints)                Metadata files + Manifest files + Snapshots
+Transaction Log                 Yes (_delta_log)                               No transaction log; uses snapshot metadata
+Streaming Support               Excellent (Structured Streaming)                       Supported, but not as mature across all engines
+Change Data Feed (CDF)          ✅ Native support                                 ❌ No native CDF
+Liquid Clustering               ✅ Supported                                      ❌ Not supported
+Z-Ordering                      ✅ Supported                                      ❌ Not supported
+Optimize Command                OPTIMIZE with file compaction and clustering    No native OPTIMIZE; maintenance is engine-specific
+Vacuum                          Native VACUUM command                           Expire snapshots and remove orphan files using Iceberg procedures
+Time Travel                     By version or timestamp                         By snapshot ID or timestamp (engine-dependent)
+Schema Evolution                Excellent                                               Excellent
+Partition Evolution             Supported                                       Strong support without rewriting existing data
+Small File Management           OPTIMIZE + Auto Optimize                        Compaction depends on the processing engine
+Best For                        Databricks Lakehouse                            Open, multi-engine Data Lake
+
+
+
+Delta table checkpoint: 
+There are two different types of checkpoints in Delta Lake, and they are often confused in interviews.
+
+Delta Log Checkpoints (automatic, for transaction log performance)
+Structured Streaming Checkpoints (for stream recovery)
+
+Since you asked about Delta Lake table with checkpoint implementation, I'll explain Delta Log Checkpoints.
+
+
+What is a Delta Log Checkpoint?
+
+Every transaction on a Delta table creates a JSON log file in _delta_log.
+
+Example:
+
+sales/
+│
+├── part-00001.parquet
+├── part-00002.parquet
+│
+└── _delta_log/
+      00000000000000000000.json
+      00000000000000000001.json
+      00000000000000000002.json
+      ...
+
+Suppose your ETL runs every 5 minutes.
+
+One day later:
+288 commits/day
+After a month:
+8640 JSON files
+If a new Spark cluster wants to read the table, it would have to read thousands of JSON transaction logs.
+That would be slow.
+Solution: Checkpoint
+
+Delta automatically creates a checkpoint after a configurable number of commits (by default, every 10 commits).
+
+Example:
+_delta_log/
+00000000000000000000.json
+00000000000000000001.json
+...
+00000000000000000009.json
+
+00000000000000000010.checkpoint.parquet
+
+Instead of replaying all 10 JSON files, Spark reads:
+Checkpoint
+      +
+Remaining JSON files
+
+This makes table loading much faster.
+
+Example
+Suppose your table receives these operations:
+
+Version 0
+INSERT
+
+Version 1
+INSERT
+
+Version 2
+MERGE
+
+Version 3
+UPDATE
+
+...
+
+Version 10
+DELETE
+
+Delta creates:
+00000000000000000010.checkpoint.parquet
+
+Now when Spark opens the table:
+
+Instead of:
+
+Read
+
+0.json
+1.json
+2.json
+...
+10.json
+
+It reads:
+10.checkpoint.parquet
+
++
+
+11.json
+12.json
+
+Much faster.
+
+Folder Structure
+sales/
+
+part-00001.parquet
+
+part-00002.parquet
+
+_delta_log/
+
+00000000000000000000.json
+00000000000000000001.json
+...
+00000000000000000009.json
+
+00000000000000000010.checkpoint.parquet
+
+00000000000000000011.json
+00000000000000000012.json
+Can we create checkpoint manually?
+
+Normally No.
+
+Delta creates checkpoints automatically.
+
+You can change the checkpoint interval.
+
+Example:
+
+ALTER TABLE sales
+SET TBLPROPERTIES (
+  'delta.checkpointInterval' = '20'
+);
+
+Now Delta creates a checkpoint every 20 commits instead of every 10.
+
+Why is it needed?
+Imagine a production table.
+5-minute pipeline
+↓
+300 commits/day
+↓
+9000 commits/month
+
+Without checkpoint:
+Read
+9000 JSON files
+With checkpoint:
+Checkpoint
++
+Last few JSON files
+
+Startup time becomes much faster.
+
+Delta Checkpoint vs Streaming Checkpoint
+Delta Log Checkpoint    Structured Streaming Checkpoint
+Improves table read performance Tracks streaming progress
+Stored in _delta_log    Stored in checkpoint directory
+Created automatically   Specified by developer
+Metadata optimization   Failure recovery and exactly-once processing
+Interview Answer
+
+A Delta Log checkpoint is a Parquet snapshot of a Delta table's transaction log. Every write operation creates a JSON log in the _delta_log directory, and replaying thousands of JSON files would slow table initialization. To avoid this, Delta Lake automatically creates checkpoint Parquet files at regular commit intervals (default every 10 commits). When a table is read, Spark loads the latest checkpoint and only the newer JSON logs, significantly reducing metadata read time and improving query performance.
+
+Real-time Example
+
+Suppose your ADF pipeline writes to a Delta table every 5 minutes:
+
+ADF
+   ↓
+Databricks Notebook
+   ↓
+MERGE INTO Delta Table
+   ↓
+_delta_log grows
+   ↓
+After every 10 commits
+Delta creates checkpoint.parquet automatically
+
+In this scenario, you don't write any checkpoint code—Delta Lake manages transaction log checkpoints automatically in the background.
 
 
 
 
+Azure Load Balancer:
+Azure Load Balancer distributes network traffic across multiple backend resources to improve availability and scalability. As a Data Engineer, I don't typically configure it, but I benefit from it when Azure Data Factory connects to highly available REST APIs, Self-hosted Integration Runtime clusters, or SQL Server instances hosted on Azure VMs. If one backend server fails, the Load Balancer routes traffic to healthy instances, helping data pipelines continue without interruption.
+
+
+SHIR: self hosted integration runtime:
+SHIR is software need to install on VM.
+
+1. create a VM 
+2. Create a Self-hosted Integration Runtime, install the SHIR with key1 and key2.
+3. Install SHIR on VM
+4. register VM with SHIR generated key1
+5. verify status
+6. create linked service.
+
+
+IR integration Runtime:
+We can create IR in ADF (here if we select SHIR then above steps to flow to setup SHIR inorder to use in the ADF)
 
 
 

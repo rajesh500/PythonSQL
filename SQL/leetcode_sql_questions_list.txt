@@ -17,7 +17,7 @@ Task                                                                            
 1369. Get the Second Most Recent Activity                                           2
 1384. Total Sales Amount by Year                                                    2
 1412. Find the Quiet Students in All Exams
-1479. Sales by Day of the Week
+1479. Sales by Day of the Week                                                      
 1635. Hopper Company Queries I
 1645. Hopper Company Queries II
 1651. Hopper Company Queries III
@@ -64,7 +64,6 @@ Task                                                                            
 3554. Find Category Recommendation Pairs
 3617. Find Students with Study Spiral Pattern
 3673. Find Zombie Sessions
-3764. Most Common Course Pairs
+3764. Most Common Course Pairs                                                        2
 3832. Find Users with Persistent Behavior Patterns
-
 
