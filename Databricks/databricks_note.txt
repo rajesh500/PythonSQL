@@ -1482,50 +1482,6 @@ In this scenario, you don't write any checkpoint code—Delta Lake manages trans
 
 
 
-Azure Load Balancer:
-Azure Load Balancer distributes network traffic across multiple backend resources to improve availability and scalability. As a Data Engineer, I don't typically configure it, but I benefit from it when Azure Data Factory connects to highly available REST APIs, Self-hosted Integration Runtime clusters, or SQL Server instances hosted on Azure VMs. If one backend server fails, the Load Balancer routes traffic to healthy instances, helping data pipelines continue without interruption.
-
-
-SHIR: self hosted integration runtime:
-SHIR is software need to install on VM.
-
-1. create a VM 
-2. Create a Self-hosted Integration Runtime, install the SHIR with key1 and key2.
-3. Install SHIR on VM
-4. register VM with SHIR generated key1
-5. verify status
-6. create linked service.
-
-
-IR integration Runtime:
-We can create IR in ADF (here if we select SHIR then above steps to flow to setup SHIR inorder to use in the ADF)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

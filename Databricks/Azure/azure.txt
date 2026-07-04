@@ -1012,6 +1012,138 @@ We typically use parameters for values such as file names, folder paths, table n
 
 
 
+Parameters and variables:
+parameters and variables can be defined at four levels
+1. Pipeline level  (both)
+2. Dataset level (parameters)
+3. Activity level (parameters)
+4. Linked service (parameters)
+5. Data flow level  (parameters)
+
+
+Pipeline level:
+Example: 
+Filename
+FolderName
+TableName
+
+The value never changes during the pipeline run.
+@pipeline().parameters.TableName
+
+
+Variables:
+Example:
+Watermark
+RetryCount
+Status
+
+Updated during execution:
+@variables('Watermark')
+
+
+
+Dataset parameter:
+These parameters exist only while that dataset is used by the activity.
+@dataset().FileName
+
+Example:
+FolderName = Landing
+FileName = Customer.csv
+
+
+
+Dataflow Parameters:
+Suppose a Data Flow has:
+TargetFile
+LoadDate
+
+Pipeline Data Flow activity passes:
+TargetFile = customer.parquet
+
+Inside Data Flow:
+$TargetFile
+
+
+
+
+
+## Error handling and Retry Mechanism:
+Error handling can be done at Activity level only:
+Each activity has four options.
+        1. Succeeded
+        2. Failed
+        3. Completed
+        4. Skipped
+
+Copy Activity
+   ├── On Success → Update watermark / archive file
+   └── On Failure → Log error / send email / move file to error folder
+
+
+Retry Mechanism
+Every activity has Policy settings:
+Retry: 3
+Retry interval: 30 seconds
+Timeout: 12 hours
+
+
+Example:
+Copy Activity fails due to temporary network issue
+        ↓
+ADF waits 30 seconds
+        ↓
+Retries
+        ↓
+If succeeds → continue pipeline
+        ↓
+If still fails after 3 attempts → failure path runs
+
+
+capture error message:
+@activity('Copy_Data').error.message
+
+create a DB table and write into that table using stored procedure
+
+
+
+Dataflow level error handling:
+error can be occured at these transformation level 
+Conditional Split
+Derived Column
+Assert transformation
+Sink error row handling
+
+mostly at data flow level error can be occured at Row/data quality issue, Bad date, null ID, invalid amount.
+
+example of errors.
+Invalid date
+Invalid number
+Null mandatory column
+Duplicate key
+Wrong data type
+
+
+
+
+
+Azure Load Balancer:
+Azure Load Balancer distributes network traffic across multiple backend resources to improve availability and scalability. As a Data Engineer, I don't typically configure it, but I benefit from it when Azure Data Factory connects to highly available REST APIs, Self-hosted Integration Runtime clusters, or SQL Server instances hosted on Azure VMs. If one backend server fails, the Load Balancer routes traffic to healthy instances, helping data pipelines continue without interruption.
+
+
+SHIR: self hosted integration runtime:
+SHIR is software need to install on VM.
+
+1. create a VM 
+2. Create a Self-hosted Integration Runtime, install the SHIR with key1 and key2.
+3. Install SHIR on VM
+4. register VM with SHIR generated key1
+5. verify status
+6. create linked service.
+
+
+IR integration Runtime:
+We can create IR in ADF (here if we select SHIR then above steps to flow to setup SHIR inorder to use in the ADF)
+
 
 
 
