@@ -106,6 +106,21 @@ source is table:
 Table, query, stored procedure
 partition option None, Physical partitions of table, Dynamic range.
 
+Sink level partitions:
+use current partitioning   --> Keeps the existing Spark partitions from the previous transformation. Use this when the data is already correctly partitioned.
+single partition           --> write into single partition
+set partitioning
+        1. Round Robin     --> define the no of partition required (no column required) data evenly distributed into those partitions
+        2. Hash            --> partition based on one or more columns  
+        3. Dynamic range   --> define the partition column and no of partitions (column required) --> spark will decide the data to go into the partition
+        4. Fixed Range     --> define range based on column (example 1-50, 50-100....)
+        5. Key             --> partition based on column
+                               Example: department vice HR to one file
+                                                        IT to one file
+                                                        ....
+                                Example2: Customer 101 --> one group
+                                                   102 --> one ......
+
 settings:
 Maximum data integration unit  --> DIU's increase for processing large files (DIU means like cluster).
 Degree of copy parallelism   --> enable parallem copying mechanism
@@ -1145,6 +1160,6 @@ IR integration Runtime:
 We can create IR in ADF (here if we select SHIR then above steps to flow to setup SHIR inorder to use in the ADF)
 
 
-
+collaboration branch or release branch(main branch):
 
 
