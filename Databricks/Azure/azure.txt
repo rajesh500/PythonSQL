@@ -1163,3 +1163,111 @@ We can create IR in ADF (here if we select SHIR then above steps to flow to setu
 collaboration branch or release branch(main branch):
 
 
+
+
+#Fault Tolerance:
+Fault tolerance in Azure Data Factory means designing pipelines so they can handle errors, recover from failures, and continue processing without losing data.
+
+Copy activity level:
+Copy Activity → Settings → Fault tolerance
+
+Example source data:
+CustomerID,Name,Age
+101,Raj,33
+102,John,ABC
+103,Sam,40
+
+If the sink expects Age as an integer, the second row is incompatible.
+
+With fault tolerance enabled:
+
+101,Raj,33     → Copied
+102,John,ABC   → Skipped and logged
+103,Sam,40     → Copied
+
+ADF continues the activity instead of failing the entire load.
+
+If we don't implement falut tolerance pipeline or activity will get failed.
+
+
+
+Use activity dependency paths: If any activity failed send email notification on failure.
+
+On Success
+On Failure
+On Completion
+On Skip
+
+Example:
+
+Copy Activity
+   ├── Success → Update watermark
+   └── Failure → Log error / Send notification
+Error-handling pipeline
+
+You can use an Execute Pipeline activity to call a reusable error-handling pipeline.
+
+Main pipeline failure
+        ↓
+Execute error pipeline
+        ↓
+Write error details to audit table
+        ↓
+Send notification
+
+
+
+Copy Activity
+    ├── On Success → Execute Stored Procedure
+    ├── On Failure → Send Email
+    ├── On Completion → Log Audit
+    └── On Skip → Continue
+
+
+
+Question:
+Your metadata-driven pipeline processes 500 tables. Table 250 fails. How do you ensure the other 499 tables still process?
+Fault tolerance in an ADF pipeline is the ability to recover from failures without losing data or stopping the entire workflow. I implement it using retry policies for transient failures, dependency conditions such as On Success, On Failure, and On Completion, reusable error-handling pipelines, audit logging, and proper watermark management for incremental loads. In metadata-driven pipelines, I design ForEach processing so that one failed table is logged while the remaining tables continue processing. This makes the ETL process resilient, easier to monitor, and simpler to recover from failures.
+
+
+
+how to implement at data flow level in adf:
+At the ADF Mapping Data Flow level, fault tolerance is mainly implemented using Assert transformations, Conditional Split, error sinks, and sink error-row handling.
+
+1. Validate records using Assert
+2. Separate valid and invalid records
+3. Add error information
+4. Write bad records to an error sink
+5. Configure sink error-row handling    Enable error option at sink so data continous to load if any error skipped those records.
+
+
+Design:
+Source
+   ↓
+Data Type Conversion
+   ↓
+Assert Transformation
+   ↓
+Conditional Split
+   ├── Valid rows
+   │      ↓
+   │   Main Sink
+   │
+   └── Invalid rows
+          ↓
+      Add Error Details
+          ↓
+      Error Sink
+
+
+
+  Assert trasnformation:
+  The Assert transformation in Azure Data Factory (ADF) is a powerful tool inside Mapping Data Flows used to build custom data quality and validation rules. It allows you to evaluate rows against specified criteria, tag invalid data, and gracefully handle errors downstream without needing to write code.
+
+
+  Core Assert TypesYou can configure three primary verification rules inside the transformation panel:
+  Expect true: Validates that an expression resolves to a boolean true. (e.g., checking if Age >= 18 or if an email matches a specific regex pattern).
+  Expect unique: Targets a specific column or expression to identify duplicate rows and enforce uniqueness constraints.
+  Expect exists: Checks a secondary data stream to verify whether matching rows exist in both sources (similar to a reference data lookup or foreign key check).
+
+
