@@ -1,0 +1,121 @@
+Microsoft Fabrics:
+Microsoft Fabric is a unified cloud-based analytics platform from Microsoft that brings together Data Engineering, Data Factory, Data Science, Data Warehouse, Real-Time Analytics, Power BI, and Lakehouse into a single Software-as-a-Service (SaaS) platform.
+
+Instead of using separate services like Azure Data Factory, Azure Synapse, Azure Data Lake, and Power BI, Microsoft Fabric integrates them into one platform with a single user experience.
+
+Architecture:
+Data Sources
+      │
+      ▼
+Fabric Data Factory
+(Pipelines, Dataflows)
+      │
+      ▼
+OneLake
+(Single storage layer)
+      │
+      ├────────► Lakehouse
+      ├────────► Data Warehouse
+      ├────────► Spark Notebooks
+      ├────────► SQL Analytics
+      └────────► Power BI Reports
+
+
+OneLake is Microsoft's centralized storage layer for Fabric. It is build on top of ADLS Gen2
+
+
+Key Features:
+Unified analytics platform
+SaaS (no infrastructure or cluster management)
+Built-in Apache Spark
+Native Power BI integration
+Delta Lake storage format
+Centralized OneLake storage
+Supports notebooks, SQL, pipelines, and real-time analytics
+Built-in governance and security
+
+
+Why Fabric:
+
+
+How Fabric:
+Workspace & Access Control( workspace level, item level, object, row level..)
+Data Access
+Data Ingestion (pipeline, data flow, notebooks etc...)
+Data Architecture & choice of data store ( lakehouse, ware house, KQL db)
+Ensuring data quality
+
+
+
+
+Capacity
+Experience
+Item
+Tenant
+Workspace
+
+
+Capacity is a dedicated set of resources that is available at a given time to be used. Capacity defines the ability of a resource to perform an activity or to produce output. Fabirc offers capactiy through the Fabric SKU and Trials.
+
+Experience: A collection of capabilities targeted to specific functionality. The fabric experiences include synapse Data warehouse, synapse Data Engineering, Synapse Data science, Synapse Real-time anayltics and powerBI.
+
+
+Item: An item a set of capabilities within an experience. For example the Data Engineering experience includes the lakehouse, notebook, and spark job definition items.
+
+Tenant: A Tenant is a single instance of fabric for an organization and is aligend with a microsoft Entra ID.
+
+
+Workspace: A workspace is a collection of items.
+
+
+Roles:
+Admin  -- All access
+Member 
+Contributor
+Viewer -- see all
+
+
+shortcuts:
+shorcuts are objects in onelake that point to other storage locations. The location can be internal or exteral to onelake. The location that a shortcut points to is known as the target path of the shortcut.
+
+Shortcuts behave like sumbolic links. They are an independent object from the target. If you delete a shortcut, the target remains unaffected. If you move, rename or delete a target path, the shorcut can break.
+
+
+
+Categories:
+ Get data
+ Mirror data
+ Store data
+ Prepare data
+ Analyze and train data
+ Develop data
+ Visualize data
+ Track data
+ Distribute data
+ Legacy
+ Others
+
+
+ one lake file explorer:
+
+
+
+
+Copy Job:
+select source, destination, settings, map to destination, review + save.
+
+
+copy job vs copy data activity:
+copy job is a standalone, no-code data movement feature that copies data from a source to a destination without requiring a pipeline.
+
+
+A Copy Data Activity is an activity within a Data Factory Pipeline. It is used when data movement is part of a larger orchestration process.
+
+
+direct lake:
+Direct Lake is a Microsoft Fabric connectivity mode that allows Power BI semantic models to query data directly from OneLake without importing the data into Power BI or sending SQL queries to the data warehouse.
+
+
+
+
+
