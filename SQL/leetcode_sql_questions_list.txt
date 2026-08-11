@@ -1,6 +1,6 @@
 
 Task                                                                            Level2
-185. Department Top Three Salaries
+185. Department Top Three Salaries                                                  2
 262. Trips and Users
 569. Median Employee Salary                                                         2
 571. Find Median Given Frequency of Numbers

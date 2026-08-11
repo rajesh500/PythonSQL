@@ -117,5 +117,95 @@ Direct Lake is a Microsoft Fabric connectivity mode that allows Power BI semanti
 
 
 
+DataFlow:
+Pros:
+Centralized data management
+Reusability
+Data Transformation
+Consistency
+Integration with Datalakes
+Performance increases
+Schedule refresh on dataflow level
+
+
+
+KQL:
+KQL stands for Kusto Query Language. It is a powerful, read-only tool used to search and analyze large sets of data
+You use a pipe symbol (|) to pass data from one step to the next. It is widely used in Microsoft Sentinel, Azure Monitor, and Azure Data Explorer (ADX).
+
+features:
+Readability
+Data Exploration
+Time series analysis
+Aggregation and statistics
+extensibility
+Integration: Azure monitor, Log Analytics, Power BI etc...
+
+
+
+KQL    vs  SQL:
+1. Designed for log and telemetry data analysis, often used in ADX, Azure monitor etc...
+
+2. Works with schema-less data, can analyze semi-structured and unstructured data.
+
+3. Use '|' operator --> to chain commands
+4. Has in-built functions for time series analysis and is optimized for fast aggregation over large datasets.
+5. Designed for real-time log and telemetry analytics.
+
+
+
+1. General purpose query language
+2. operates on structured data
+3. commonly used for transactional data, retrieval and manipulation.
+
+
+
+Why KQL when SQL will also do the same.
+SQL is designed to query structured data example as transaction data, power BI reports etc.....
+KQL is mainly designed around to handle hugh volumne of data (like logs, real-time analytics, telemetry, events.....)
+Here data is generated millions/ billions in 10 minutes, handling this much of volume data SQL takes time but KQL is very fast.
+
+
+
+So if an interviewer asks “Why KQL when SQL can do the same thing?”, you can say:
+“SQL can do many of the same operations, but KQL is specifically designed to make querying huge volumes of logs, events, and time-based data simple and fast. That's why we prefer KQL for real-time analytics
+
+
+
+KQL query execution order:
+Table
+ ↓
+| where
+ ↓
+| project
+ ↓
+| summarize
+ ↓
+| order by
+ ↓
+| take
+
+
+project means fields
+summarize means group by + aggreagation functions.
+
+
+
+This will convert SQL in KQL language.
+-- 
+explain
+select PAX_1HR, sum(RowId) from tmp_raw_data where PAX_1HR = 541 group by 1
+
+
+
+Direct T-SQL can be run over here.  (in KQL database)
+-- 
+select PAX_1HR, sum(cast(RowId as int)) from tmp_raw_data where PAX_1HR = 541 group by PAX_1HR  
+
+
+
+
+
+
 
 
