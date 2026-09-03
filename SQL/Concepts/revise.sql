@@ -811,3 +811,12 @@ A Sort Merge Join in PostgreSQL combines two datasets by first ensuring both are
 FILTER:
 SUM(salary) FILTER (WHERE department = 'IT') AS it_salary
 count(*) FILTER(where dept = 'Sales') as sales_count,
+
+
+char vs varchar:
+char is fixed length and add spaced if size doesn't meets
+example:
+char(8) --> expecting 8 characters if 7 characters is inserted then 8 one will be space added to the value during insert.
+
+varchar: is fixed length
+example: varchar(8) it accept 8 if 7 values string is their still it accept space won't added.

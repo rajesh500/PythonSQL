@@ -812,11 +812,15 @@ Replicate the exact DB from on-prem to cloud same as DB, schema, tables, constra
 drop the constrains once load is completed then add the constraints again....
 
 
+DMS supports  migrating data from  SQL server, Oracle, MYSQL, postgresql to azure database platforms.
+Other DB's not supported.
 
 
+Azure data box:
+Azure Data Box is a Microsoft-provided physical storage device used to transfer very large amounts of data between an on-premises data center and Azure when transferring through the internet would be too slow, expensive or unreliable.
 
-
-
+In simple terms:
+Microsoft ships an encrypted storage device to you, you copy your data onto it, ship it back, and Microsoft uploads the data into your Azure Storage account.
 
 
 

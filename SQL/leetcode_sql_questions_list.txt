@@ -1,7 +1,7 @@
 
 Task                                                                            Level2
 185. Department Top Three Salaries                                                  2
-262. Trips and Users
+262. Trips and Users                                                                2
 569. Median Employee Salary                                                         2
 571. Find Median Given Frequency of Numbers
 579. Find Cumulative Salary of an Employee
@@ -40,8 +40,8 @@ Task                                                                            
 2701. Consecutive Transactions with Increasing Amounts
 2720. Popularity Percentage                                                         2
 2752. Customers with Maximum Number of Transactions on Consecutive Days
-2793. Status of Flight Tickets
-2991. Top Three Wineries
+2793. Status of Flight Tickets                                                      2
+2991. Top Three Wineries                                                            2
 2994. Friday Purchases II
 2995. Viewers Turned Streamers
 3052. Maximize Items                                                                 2

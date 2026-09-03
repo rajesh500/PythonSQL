@@ -1,0 +1,1001 @@
+Netezza:
+
+Before netezza if a company want to setup their data warehouse, there are lot of thing they need to take care about like
+database types, softwares, serves, storage types networking, os, integration and hardware and softwares...
+
+All these takes months of time.
+
+Where netezza introduce and those components available in one place, using netezza load data and query for fast result.
+
+Database software + Compute + Storage + Networking.
+
+
+Netezza is a massively parallel processing (MPP) data warehouse appliance designed to store and analyze large volumes of structured data.
+
+It combines these components into one integrated system:
+
+Database software
+Computing servers
+Storage
+Networking
+Query-processing hardware and software
+
+Instead of customers separately selecting database software, servers, storage and configuration, Netezza was delivered as a pre-integrated data warehouse appliance.
+
+Source systems → ETL → Netezza → BI reports and analytics
+
+Netezza was originally released around 2003. IBM acquired Netezza Corporation in 2010.
+
+
+Netezza used for 
+Enterprise data warehousing
+Large SQL queries
+business intelligence reporting
+historical- data analysis.
+customer and sales analytics
+finanical and risk reporting
+telecommunications analytics
+fraud detection
+regulatory reporting
+large-table joins and aggregations.
+
+
+SQL query:
+SELECT
+    store_id,
+    product_category,
+    SUM(sales_amount)
+FROM sales
+WHERE sale_date BETWEEN '2025-01-01' AND '2025-12-31'
+GROUP BY
+    store_id,
+    product_category;
+
+
+ Traditional data warehouse follow traditional approach not the parallel processing. Netezza distributed the data and query processing across many parallel processing units, allowing large analytical queries to finish much faster than conventional databases of that time.
+
+
+Netezza solved above hardware and software problem along with distributed parallel processing.
+
+
+Netezza sovled four major problems.
+1. slow analytical queries
+
+Traditional systems often processed large analytical queries using a limited number of CPUs and centralized storage.
+
+This created bottlenecks when queries needed to:
+
+Scan billions of records
+Join multiple large tables
+Perform large aggregations
+Produce enterprise reports
+
+Netezza used massively parallel processing.
+
+Large query
+    ↓
+Broken into smaller operations
+    ↓
+Processed simultaneously across multiple SPUs
+    ↓
+Results combined and returned
+
+Instead of one server scanning the entire table, multiple processors scanned separate portions concurrently.
+
+
+2. Too much data moved from storage to the database.
+
+Conventional systems, scans large amount of data from disk to server memory and filter out.
+
+Netezza used FPGA-based filtering close to the storage layer.
+Disk --> FPGA filters data --? only relevant data reaches CPU.
+
+3. Complex database administration.
+   creating index, rebuilding indexes, table spaces, manage storage layouts, tuning database parameters etc..
+
+
+ Netezza promoted a simple model
+ Load the data and run SQL queries.
+ It used
+ Distribution Keys
+ Zone Maps
+ MPP processing
+ Sequential Scanning
+ Hardware-assisted Filtering
+
+ Netezza has low-administration works.
+
+ 4. Long Implementation time
+ Companies spending months of time on infrastructure..
+
+ Netezza provided an integrated appliance
+ Hardware + Storage + Database + Processing engine.
+
+
+ How Netezza Architecure worked:
+ Main Components were:
+ Host: accepted SQL queries from applicaitons and performed.
+       Internally host did SQL parsing, query planning, Query coordinaiton, combining final results, returing results to the client.
+
+
+Snippet Processing Units:
+convert queries into smaller pieces called snippets
+SPU ( snippet processing unit)
+
+Each Snippet Processing Unit processed the data stored on its assigned disk.
+
+SQL query
+   ↓
+Host creates query plan
+   ↓
+Query is divided into snippets
+   ↓
+SPUs process their local data in parallel
+   ↓
+Host combines the results
+
+
+FPGA  (Field-programmable Gate array)
+The FPGA processed data as it streamed from disk.
+
+It helped with operations such as:
+
+Filtering rows
+Selecting columns
+Decompressing data
+Identifying visible records
+
+This reduced the amount of data passed to the processor.
+
+
+
+Disitribution:
+
+Rows were distributed across multiple data slices using a distribution key.
+
+A good distribution key provided:
+
+Even data distribution
+Reduced data skew
+Fewer data movements during joins
+Better parallel processing
+
+
+Zone Maps:
+Zone maps stored metadata about the minimum and maximum values in storage regions.
+
+If a query filtered by date:
+
+WHERE sale_date = '2026-08-31'
+
+Netezza could skip storage regions whose date ranges didn’t contain that value.
+
+This is conceptually similar to:
+
+Delta Lake data skipping
+Parquet statistics
+Partition pruning
+
+
+Why companies are migrating from Netezza
+
+Although Netezza was highly effective, many organizations are moving to cloud platforms such as Databricks because they want:
+
+Elastic compute
+Independent scaling of storage and compute
+Lower hardware-management overhead
+Object-storage integration
+Support for structured and unstructured data
+Streaming and machine learning
+Open formats such as Parquet and Delta
+Flexible workload isolation
+Cloud-native automation
+Usage-based pricing
+
+Netezza was designed mainly as a specialized warehouse appliance. Databricks supports a broader data and AI platform model.
+
+
+
+GROOM Table:
+Once update or delete perform dead tuple exist in the space.
+In order to recover space groom command we should use.
+
+GROMM table sales:
+
+GENERATE STATISTICS:
+GENERATE STATISTICS collects information about the data and stores it in the Netezza catalog.
+
+The query optimizer uses these statistics to select an efficient execution plan.
+
+
+GENERATE STATISTICS ON SALES;
+
+For specific columns:
+
+GENERATE STATISTICS ON SALES
+    (SALE_ID, CUSTOMER_ID, SALE_DATE);
+Statistics include information such as
+Row counts
+Number of distinct values
+Minimum and maximum values
+Data distribution
+Null values
+Column cardinality
+
+The optimizer uses this information to decide:
+
+Join order
+Join strategy
+Which table should be processed first
+Expected number of rows after filtering
+Whether data redistribution is required
+The cost of different execution plans
+
+
+
+
+Zone Map is like partition 
+organize on is controls how rows are organized inside that data slice.
+
+
+
+Why is it used?
+Assume the SALES table contains ten years of data and the query requests only one month:
+
+SELECT SUM(SALES_AMOUNT)
+FROM SALES
+WHERE SALE_DATE
+      BETWEEN '2026-08-01' AND '2026-08-31';
+
+If the rows are physically organized by SALE_DATE, Netezza’s zone maps can identify which storage extents contain August 2026 data.
+
+It skips the other extents instead of scanning all ten years.
+
+
+char vs varchar:
+char is fixed length and add spaced if size doesn't meets
+example:
+char(8) --> expecting 8 characters if 7 characters is inserted then 8 one will be space added to the value during insert.
+
+varchar: is fixed length
+example: varchar(8) it accept 8 if 7 values string is their still it accept space won't added.
+
+
+Temporary and external tables:
+
+Temporary table stored intermediate date available only in the current session.
+
+
+External table:
+An external table allows Netezza to read data from or write data to a flat file. The data is not stored in a regular Netezza user table
+
+
+Transient external table
+
+A transient external table is an external table that exists only for the duration of a single SQL statement.
+
+It is not a regular Netezza table type like a permanent or temporary table. It is specifically a short-lived external-table definition.
+
+
+nzsql is command line interface for SQL client
+same lime sqlcmd, databricks SQL CLI, command prompt, AWS CLI.
+
+
+single sql statement execution:
+nzsql -h netezza-host \
+      -d SALESDB \
+      -u admin \
+      -pw password \
+      -c "SELECT COUNT(*) FROM SALES;"
+
+
+multiple sql statement execution:
+nzsql -h netezza-host \
+      -d SALESDB \
+      -u admin \
+      -pw password \
+      -f sales_load.sql
+
+
+nzload:
+nzload is the Netezza command-line bulk-loading utility. It loads delimited or fixed-format files into an existing Netezza table.
+
+
+stored procedure:
+same as plsql stored procedure only slight differences are 
+language NZPLSQL
+
+assign a value is p_status alias for $2;
+
+calling stored procedure:
+CALL update_customer_status(1001, 'ACTIVE');
+
+
+view and materalized views same:
+
+
+
+Azure DMS (data migration service) is not right option to migrate data from netezza to databricks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Question:
+For a 10 TB Netezza-to-Azure Databricks migration, use a phased migration with ADF + Self-hosted Integration Runtime + ADLS Gen2 + Databricks.
+
+Netezza 10 TB --> ADF + SHIR --> ADLS landing --> Bronze Delta --> Silver Delta --> Gold --> Reporting BI
+
+Do not treat the 10 TB database as one copy operation. Divide it by table and split large tables into restartable extraction chunks.
+
+1. Assess the Netezza environment
+First, build a complete inventory.
+
+Collect:
+Databases and schemas
+Tables and row counts
+Actual table sizes
+Distribution keys
+Organize-on columns
+Data skew
+Views and materialized views
+Stored procedures
+Sequences
+Functions
+External tables
+nzsql and shell scripts
+nzload processes
+ETL job dependencies
+Users, groups and permissions
+Query history
+Data-retention requirements
+
+Classify every table:
+
+Category    Example size    Migration strategy
+Small   Under 1 GB  Full copy
+Medium  1–100 GB    Full copy, one table per activity
+Large   100 GB–1 TB Partitioned/range-based extraction
+Very large  Over 1 TB   Multiple restartable extraction chunks
+Static reference    Any manageable size One-time full copy
+Transactional   Frequently changing Historical load plus incremental load
+
+Do not assume the Netezza database’s allocated size is the amount that will cross the network. Calculate:
+
+Actual used data
+Data after applying retention rules
+Exported CSV size
+Expected Parquet size
+Temporary staging-space requirement
+
+
+2. Decide migration scope
+Identify objects that should not be migrated:
+
+Empty tables
+Obsolete schemas
+Old temporary/staging tables
+Unused views
+Duplicate extracts
+Expired historical data
+Backup tables
+Development copies
+
+For example, a 10 TB database may contain only 7 TB of required data after retention and cleanup.
+
+3. Design the target architecture:
+
+A recommended Databricks design is:
+
+ADLS landing
+    └── Immutable source extracts
+
+Bronze
+    └── Netezza data with minimal modification
+
+Silver
+    └── Cleaned, standardized and deduplicated data
+
+Gold
+    └── Dimensions, facts and reporting models
+
+Example Unity Catalog organization:
+
+production
+├── bronze
+│   ├── customer
+│   ├── orders
+│   └── sales
+├── silver
+│   ├── customer
+│   ├── orders
+│   └── sales
+└── gold
+    ├── dim_customer
+    ├── dim_product
+    └── fact_sales
+
+Prepare:
+Azure Storage account
+ADLS Gen2 containers
+Azure Data Factory
+Self-hosted Integration Runtime
+Azure Databricks workspace
+Unity Catalog
+Storage credentials and external locations
+Key Vault
+Dev, test and production environments
+Private endpoints/firewall rules if required
+
+4. Establish connectivity
+Because Netezza is usually on-premises, install Self-hosted Integration Runtime on a server that can access both Netezza and Azure.
+
+Netezza network
+      ↓
+Self-hosted Integration Runtime
+      ↓ HTTPS
+Azure Data Factory
+      ↓
+ADLS Gen2
+
+Configure:
+
+Netezza host and port
+Netezza database
+User/service account
+Netezza driver
+Firewall rules
+Azure Storage access
+Key Vault secrets
+TLS/security settings
+
+Test with a small table first:
+
+SELECT *
+FROM customer
+LIMIT 1000;
+
+Microsoft supports Netezza as an ADF Copy Activity source through Azure or Self-hosted Integration Runtime. ADF Netezza connector
+
+
+5. Create a metadata-driven migration framework
+Create a control table rather than building a separate hard-coded pipeline for every table.
+
+CREATE TABLE migration_control (
+    source_schema       VARCHAR(100),
+    source_table        VARCHAR(100),
+    target_table        VARCHAR(100),
+    load_type           VARCHAR(20),
+    partition_column    VARCHAR(100),
+    lower_bound         VARCHAR(100),
+    upper_bound         VARCHAR(100),
+    extraction_query    VARCHAR(4000),
+    batch_id            VARCHAR(100),
+    load_status         VARCHAR(20),
+    source_row_count    BIGINT,
+    target_row_count    BIGINT,
+    start_time          TIMESTAMP,
+    end_time            TIMESTAMP,
+    error_message       VARCHAR(4000)
+);
+
+Example metadata:
+
+Table   Size    Load    Split column    Number of chunks
+CUSTOMER    20 GB   Full    None    1
+PRODUCT 5 GB    Full    None    1
+ORDERS  1.5 TB  Range   ORDER_DATE  36
+SALES   5 TB    Range   SALE_DATE   60
+AUDIT_HISTORY   2 TB    Range   AUDIT_ID    40
+
+The parent ADF pipeline should:
+
+Read pending entries from the control table.
+Pass the entries to a ForEach.
+Execute a parameterized Copy Activity.
+Update status after completion.
+Record row counts and file information.
+Rerun only failed chunks.
+
+
+6. Extract small and medium tables
+For small tables, use a complete query:
+
+SELECT *
+FROM CUSTOMER;
+
+ADF writes the results to:
+
+/landing/netezza/SALESDB/PUBLIC/CUSTOMER/load_date=2026-09-01/
+
+Recommended output:
+
+Parquet
+Snappy compression
+Multiple reasonably sized files
+Separate path per table and migration batch
+
+Parquet is preferable to CSV because it is:
+
+Columnar
+Compressed
+Typed
+Faster for Spark
+Less expensive to store and scan
+
+CSV may still be necessary when using Netezza external-table exports, but it should be converted to Parquet or Delta after landing.
+
+
+7. Divide large tables into chunks
+Do not run:
+
+SELECT *
+FROM sales;
+
+for a 5 TB table in one copy operation. A failure near the end would make recovery difficult.
+
+Date-range extraction
+
+Suppose SALES contains five years of data:
+
+-- Chunk 1
+SELECT *
+FROM sales
+WHERE sale_date >= DATE '2021-01-01'
+  AND sale_date <  DATE '2021-02-01';
+
+-- Chunk 2
+SELECT *
+FROM sales
+WHERE sale_date >= DATE '2021-02-01'
+  AND sale_date <  DATE '2021-03-01';
+
+Notice the boundary pattern:
+
+column >= lower_bound
+AND column < upper_bound
+
+This prevents overlaps and gaps.
+
+Numeric-range extraction
+SELECT *
+FROM orders
+WHERE order_id >= 1
+  AND order_id < 10000000;
+
+Next chunk:
+
+SELECT *
+FROM orders
+WHERE order_id >= 10000000
+  AND order_id < 20000000;
+Choosing a split column
+
+A good split column should be:
+
+Indexed logically through Netezza organization/zone-map behavior
+Well distributed
+Non-null, or have a separate null-data extraction
+Stable during the migration
+Suitable for non-overlapping ranges
+
+Possible columns:
+
+Transaction date
+Created timestamp
+Increasing ID
+Batch ID
+Fiscal year/month
+
+Avoid:
+
+Highly skewed columns
+Frequently updated split values
+Low-cardinality columns such as status
+Nullable columns without separate handling
+
+For nullable keys, add a separate chunk:
+
+SELECT *
+FROM sales
+WHERE partition_column IS NULL;
+
+
+8. Control parallelism
+Run multiple table/chunk extractions concurrently, but do not overload Netezza.
+
+For example, begin with:
+
+4 concurrent extractions
+Monitor Netezza CPU, disk and query queues
+Monitor SHIR CPU, memory and network
+Increase to 8 if the environment remains stable
+Reduce concurrency during business hours
+Run the largest extraction window during off-peak hours
+
+Do not start with arbitrary high concurrency such as 50. Netezza is also serving production queries, and excessive extraction can cause:
+
+Resource contention
+Query queuing
+Increased disk scanning
+Network saturation
+Production SLA impact
+
+Test several configurations and measure actual throughput.
+
+
+9. Estimate migration duration
+Theoretical network-transfer time is:
+
+$$ \text{Time}= \frac{\text{Data size in bits}} {\text{Network throughput in bits per second}} $$
+
+Approximate theoretical times for 10 TB:
+
+Available bandwidth Theoretical minimum More practical planning range
+100 Mbps    About 9.3 days  12–20 days
+500 Mbps    About 1.9 days  3–5 days
+1 Gbps  About 22 hours  1.5–3 days
+10 Gbps About 2.2 hours Usually limited by source, SHIR or storage
+
+Practical time is longer because of:
+
+Netezza query and export speed
+Network utilization
+Compression
+SHIR capacity
+File creation
+Azure Storage throughput
+Retries
+Validation
+Production throttling
+
+Run a representative test:
+
+Select a 100–500 GB table.
+Copy it using expected production settings.
+Measure end-to-end throughput.
+Repeat during peak and off-peak periods.
+Extrapolate conservatively.
+
+Example:
+
+500 GB test completed in 3 hours
+Average throughput = 166.7 GB/hour
+
+10,000 GB ÷ 166.7 = approximately 60 hours
+Add 30% contingency = approximately 78 hours
+
+This is more reliable than estimating from the internet circuit alone.
+
+
+10. Decide whether Data Box is needed
+For a 10 TB database, network transfer through ADF is normally more practical if adequate bandwidth is available.
+
+Data Box is generally positioned for larger transfers, particularly above approximately 40 TB or where network connectivity is severely limited. Azure Data Box overview
+
+Use Data Box for 10 TB only when:
+
+Bandwidth is extremely limited
+Security policy requires offline movement
+Network transfer would take too long
+Production cannot tolerate continuous extraction traffic
+
+Data Box still requires:
+
+Exporting Netezza tables into files.
+Copying the files to Data Box.
+Shipping the device.
+Uploading the data into ADLS.
+Loading ADLS files into Databricks.
+
+It does not extract directly from Netezza.
+
+
+11. Load the landing files into Bronze Delta
+Example:
+
+from pyspark.sql.functions import current_timestamp, input_file_name
+
+source_path = (
+    "abfss://landing@account.dfs.core.windows.net/"
+    "netezza/SALESDB/PUBLIC/SALES/"
+)
+
+sales_df = (
+    spark.read
+         .format("parquet")
+         .load(source_path)
+         .withColumn("_ingestion_timestamp", current_timestamp())
+         .withColumn("_source_file", input_file_name())
+)
+
+(
+    sales_df.write
+            .format("delta")
+            .mode("append")
+            .partitionBy("sale_year")
+            .saveAsTable("bronze.sales")
+)
+
+Be careful with physical partitioning. Do not partition by:
+
+Customer ID
+Transaction ID
+High-cardinality timestamp
+Columns that create thousands of small directories
+
+Consider Delta Lake Liquid Clustering for large tables that have changing or multiple filter patterns.
+
+
+12. Convert data types
+Create an explicit mapping document:
+
+Netezza Databricks
+BYTEINT TINYINT
+SMALLINT    SMALLINT
+INTEGER INT
+BIGINT  BIGINT
+NUMERIC(p,s)    DECIMAL(p,s)
+REAL    FLOAT
+DOUBLE PRECISION    DOUBLE
+CHAR(n) STRING
+VARCHAR(n)  STRING
+DATE    DATE
+TIME    Design decision/string if necessary
+TIMESTAMP   TIMESTAMP
+BOOLEAN BOOLEAN
+INTERVAL    Transform into an appropriate representation
+
+Pay special attention to:
+
+Decimal precision and scale
+Empty string versus null
+Trailing spaces in CHAR
+Timestamp precision
+Time zones
+Invalid dates
+Character encoding
+Boolean representation
+Numeric overflow
+
+
+13. Convert Netezza SQL and objects
+Inventory and convert:
+
+Netezza object  Databricks approach
+Table   Delta table
+Distribution key    Reassess join strategy and clustering
+Organize-on/zone map    Delta statistics, data skipping and Liquid Clustering
+View    Databricks SQL view
+Materialized view   Materialized view or maintained Gold table
+Temporary table Temporary view/DataFrame/staging Delta table
+Sequence    Identity, UUID, deterministic key or key-control design
+NZPLSQL procedure   Databricks SQL/PySpark/Workflow
+nzsql shell script  Workflow task or deployment script
+nzload  ADF Copy, Spark ingestion or Auto Loader
+External table  External Delta/Parquet table or direct file query
+
+Do not translate distribution keys directly into Delta partitions. Netezza distributes rows across SPUs, while Databricks stores files in object storage and distributes computation at runtime.
+
+
+14. Implement incremental loading
+Before starting the historical extraction, record a consistent cutoff value.
+
+For example:
+
+SELECT MAX(updated_timestamp)
+FROM sales;
+
+Assume the initial cutoff is:
+
+2026-09-01 00:00:00
+
+Historical extraction:
+
+SELECT *
+FROM sales
+WHERE updated_timestamp <= TIMESTAMP '2026-09-01 00:00:00';
+
+Incremental extraction:
+
+SELECT *
+FROM sales
+WHERE updated_timestamp >  :old_watermark
+  AND updated_timestamp <= :new_watermark;
+
+Use this boundary consistently:
+
+> old watermark
+<= new watermark
+
+Only advance the stored watermark after:
+
+Extraction succeeds
+Bronze load succeeds
+Validation succeeds
+Target commit succeeds
+
+For inserts and updates, use Delta MERGE:
+
+MERGE INTO silver.sales AS target
+USING bronze.sales_increment AS source
+ON target.sale_id = source.sale_id
+
+WHEN MATCHED AND source.updated_timestamp > target.updated_timestamp
+THEN UPDATE SET *
+
+WHEN NOT MATCHED
+THEN INSERT *;
+
+For source deletes, determine whether Netezza provides:
+
+A delete indicator
+Soft-delete status
+Audit table
+CDC/change table
+Periodic key comparison
+
+An updated timestamp alone cannot detect hard deletes.
+
+
+15. Make every load restartable
+Use a batch-level audit table:
+
+batch_id
+source_table
+chunk_id
+lower_bound
+upper_bound
+extract_status
+bronze_status
+silver_status
+source_count
+target_count
+start_time
+end_time
+error_message
+
+Example:
+
+Table   Chunk   Status  Action
+SALES   2025-01 Completed   Skip
+SALES   2025-02 Failed  Rerun
+SALES   2025-03 Completed   Skip
+ORDERS  1–10M   Completed   Skip
+
+Use a deterministic landing path:
+
+/landing/sales/batch_id=INITIAL/chunk_id=2025-02/
+
+Before rerunning a failed chunk:
+
+Remove or overwrite only that chunk’s incomplete output.
+Do not delete the entire table.
+Use chunk-specific target predicates or idempotent MERGE.
+Record the retry count.
+
+
+16. Validate the data
+Validation should happen at table and chunk levels.
+
+Basic validation
+SELECT COUNT(*) FROM netezza_table;
+SELECT COUNT(*) FROM databricks_table;
+Aggregate validation
+SELECT
+    COUNT(*) AS row_count,
+    SUM(sales_amount) AS total_amount,
+    MIN(sale_date) AS minimum_date,
+    MAX(sale_date) AS maximum_date
+FROM sales;
+
+Run the equivalent query in Databricks.
+
+Key and duplicate validation
+SELECT sale_id, COUNT(*)
+FROM sales
+GROUP BY sale_id
+HAVING COUNT(*) > 1;
+Hash validation
+
+For deterministic subsets, generate comparable hashes after normalizing:
+
+Nulls
+Timestamps
+Decimals
+Trailing spaces
+Column order
+
+Validate:
+
+Row counts
+Distinct business keys
+Null counts
+Minimum and maximum values
+Financial totals
+Duplicate counts
+Referential integrity
+Column-level hashes
+Business-report totals
+
+
+17. Performance-test Databricks
+Test representative workloads:
+
+Large fact-to-dimension joins
+Daily incremental MERGE
+Month-end aggregations
+BI queries
+Concurrent user workloads
+Full table scans
+Selective date filters
+
+Optimize using:
+
+Photon
+Appropriate compute size
+Adaptive Query Execution
+Broadcast joins for small dimensions
+Liquid Clustering
+OPTIMIZE
+Predictive optimization where available
+Proper file sizes
+Avoiding unnecessary repartitioning
+Avoiding small files
+
+Performance acceptance should be based on business SLAs, not merely whether the SQL completes.
+
+
+18. Execute cutover
+A practical cutover sequence is:
+
+Complete all historical chunks.
+Reconcile the historical load.
+Run incremental loads regularly.
+Complete user acceptance testing.
+Freeze Netezza ETL or establish a final cutoff.
+Record the final high watermark.
+Run the final incremental load.
+Reconcile critical tables and reports.
+Redirect applications and BI tools.
+Monitor Databricks workloads.
+Retain Netezza temporarily for rollback.
+Decommission only after business approval.
+
+Define rollback criteria before cutover:
+
+Critical reconciliation failure
+Unacceptable performance
+Missing source changes
+Application connectivity failure
+Security or permission failure
+SLA breach
+Recommended approach for your 10 TB case
+
+A reasonable starting design would be:
+
+Use ADF with Self-hosted IR.
+Land data in ADLS as compressed Parquet.
+Migrate small tables in full.
+Split large tables by month, date or numeric range.
+Begin with 4 concurrent extractions and tune through testing.
+Use a 100–500 GB performance test to determine actual throughput.
+Load landing files into Bronze Delta.
+Convert and validate Silver/Gold transformations separately.
+Capture incremental changes with watermarks.
+Use Delta MERGE for inserts and updates.
+Maintain chunk-level status for restartability.
+Use Data Box only if network testing shows an unacceptable migration duration.
+Interview answer
+
+“For a 10 TB Netezza migration, I would first inventory tables, data volumes, dependencies, distribution keys, procedures and ETL scripts. I would establish connectivity using ADF’s Netezza connector through Self-hosted Integration Runtime and land the data in ADLS as compressed Parquet. I would migrate small tables in full and divide multi-terabyte tables into non-overlapping date or numeric ranges. A metadata-driven control table would track every table, chunk, watermark, row count and status, allowing only failed chunks to be rerun. Databricks would load the extracts into Bronze Delta, apply data-type and business transformations in Silver, and create Gold models. After historical reconciliation, I would run incremental watermark loads, perform a final delta load during cutover, validate business totals and retain Netezza temporarily for rollback
+
+

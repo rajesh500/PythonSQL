@@ -3947,3 +3947,52 @@ ABC	NULL
 :try_to_date
 try_to_date("JD", "yyyy-MM-dd") 
 otherthan this format date value, remaining value return as NULL.
+
+
+which transformation is more costly and why?
+Wide transformations (like join(), groupBy(), and orderBy()) and standard Python User-Defined Functions (udf()) are the most costly operations in PySpark. Wide transformations force heavy network data shuffling across nodes, while standard UDFs break optimization and cause costly row-by-row Python-JVM serialization.
+
+ what is available=now when would you use it pyspark?
+In PySpark Structured Streaming, available=now (written in code as .trigger(availableNow=True) [6.9]) is a trigger option that processes all currently available data in the source across one or multiple micro-batches, and then gracefully shuts down the streaming query [6.5, 6.9]. It replaces the older, deprecated trigger(once=True) method [6.14, 6.16].
+
+When to Use availableNow 
+Incremental Periodic Loads: When you want to run a streaming pipeline on a fixed schedule (such as every hour via an external scheduler like Airflow or a cron job) instead of keeping a cluster running 24/7. 
+
+Cost Optimization: When you want the fault-tolerance and state-management benefits of Structured Streaming (like watermarking and exactly-once semantics) without the cost of a continuous streaming cluster.
+
+Safe Micro-Batch Scaling: When a source has accumulated a massive backlog of data, availableNow processes it across multiple controlled micro-batches rather than forcing a single massive batch that risks running out of memory (OOM), which used to happen with trigger(once=True) [6.5, 6.9, 6.16]. 
+
+Replacing Static Batch Jobs: When you want to read from a streaming source (like Kafka or a Delta/Cloud storage folder) as a standard pipeline that stops automatically once it catches up to the present moment.
+
+
+How to Use Itpythonquery = (
+    spark.readStream.format("cloudFiles")
+    .option("cloudFiles.format", "json")
+    .load("path/to/input")
+    .writeStream.format("delta")
+    .trigger(availableNow=True)  # Processes current data and stops
+    .option("checkpointLocation", "path/to/checkpoint")
+    .start()
+)
+
+query.awaitTermination()
+
+
+
+what are the different values of _change_type in delta change feed?
+
+The _change_type column in a Delta Lake change data feed (CDF) can have four distinct string values: insert, update_preimage, update_postimage, and delete. 
+
+Change Type Values 
+insert: A new row was added to the table. 
+update_preimage: The original state of a row before an update occurred. 
+update_postimage: The new state of a row after an update occurred. 
+delete: A row was removed from the table.
+
+
+if an employee record is updated what changes types will generated in databrick when using change data feed?
+When an employee record is updated in a Databricks Delta table using Change Data Feed (CDF), it typically generates two distinct change types in the metadata column _change_type: update_preimage (the old row state before the update) and update_postimage (the new row state after the update).
+
+Change Types Generated for Standard Updates 
+update_preimage: Contains the full row data of the employee record before the update was applied.
+update_postimage: Contains the full row data of the employee record after the update was applied.

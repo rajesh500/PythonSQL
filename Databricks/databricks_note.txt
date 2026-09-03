@@ -139,7 +139,7 @@ Connect to ADLS account:
 connect to adls account can be done using 
 1. mount point complete user name and password will define here, which will cause vulenrability
 2. key-valut  even though we are not going to define password and user name but key value information will be defined here.
-   whicl will also cause vulenarability.
+   which will also cause vulenarability.
 3. Managed identity access.
 4. service prinicples.
 
@@ -225,6 +225,74 @@ partition2  IN, IN, IN
 partition3  AUS, AUS, AUS.
 
 zordering will do the re-ordering and store in the metadata not in the original location.
+Z-ordering must be run after the table load because it is a maintenance operation that reorganizes data that already exists on disk.
+
+Partitioning is also doing the same thing then what z-ordering is doing here.
+Example:
+Suppose sales is partitioned by sale_date:
+
+(
+    df.write
+      .format("delta")
+      .partitionBy("sale_date")
+      .mode("append")
+      .saveAsTable("sales")
+)
+
+Storage:
+
+sales/
+├── sale_date=2026-09-01/
+│   ├── file1.parquet
+│   ├── file2.parquet
+│   └── file3.parquet
+├── sale_date=2026-09-02/
+│   ├── file1.parquet
+│   ├── file2.parquet
+│   └── file3.parquet
+Query 1: Filter only by partition column
+SELECT *
+FROM sales
+WHERE sale_date = DATE '2026-09-01';
+
+Partition pruning skips all other dates.
+
+If the selected partition contains only a small amount of data, partitioning may be sufficient. You may not need Z-Ordering.
+
+Query 2: Filter by partition and customer
+SELECT *
+FROM sales
+WHERE sale_date = DATE '2026-09-01'
+  AND customer_id = 1001;
+
+Partition pruning selects:
+
+sale_date=2026-09-01
+
+But that partition might contain 100 files. If customer_id=1001 is scattered across many files, Databricks may need to inspect many of them.
+
+Z-Ordering can organize customer IDs inside each partition:
+
+OPTIMIZE sales
+WHERE sale_date >= DATE '2026-08-01'
+ZORDER BY (customer_id);
+
+Then Delta statistics can skip files whose customer range does not contain 1001.
+
+
+Do not Z-Order by the partition column:
+
+Usually this is redundant:
+
+PARTITIONED BY (sale_date);
+
+OPTIMIZE sales
+ZORDER BY (sale_date);
+
+Rows inside each partition already have the same sale_date. Z-Ordering on that same column provides little or no additional benefit.
+
+
+
 
 optimize or file compaction:
 Combining many small files into fewer large files to improve query performance.
@@ -243,8 +311,6 @@ deletes old files, frees storage and removes unused files.
 
 deletion vectors:
 
-
-Liquid Clustering:
 
 
 pyspark will write each record into a file in the backend multiple files will be created. to avoid this 
@@ -278,6 +344,11 @@ Databricks runtime version: standard, ML
 standard (15.4 LTS) long time stand LTS
 
 use photon acceleration: databricks engine
+Databricks Photon is a high-performance, vectorized query engine developed by Databricks. 
+It accelerates SQL and DataFrame workloads running on Delta Lake and Parquet.
+
+In simple terms:
+Spark prepares the execution plan, while Photon executes supported parts of that plan faster using native vectorized code.
 
 Computer:
 Three types
@@ -286,29 +357,19 @@ Three types
 3. Serverless compute for Job
 
 
-Job Cluster vs Interactive Cluster:
-Job Cluster:
-Mainly used for production Jobs
-Lower cost
-Dedicate to one Job
-Auto Scaling supported
-Once job run is completed, cluster will be stopped running.
-
-
-
-Interactive Cluster:
-Development and testing purpose
-Higher cost because continuosly running when notebook start execute immedaitely executes
-This cluster(pool) will be shared by multiple users and notebooks.
-Auto Scaling supported.
-
-Serverless Compute:
-You don't create or manage clusters. Databricks provisions compute automatically for each job.
+All-Purpose Clusters: Used for interactive development, notebooks, and ad-hoc analysis. 
+                      You manually start and stop them, and multiple users can share them. 
+Job Clusters: Dedicated to running automated workflows and pipelines. 
+              Databricks automatically creates them when a scheduled job starts and destroys them immediately when the job finishes. 
+              Job clusters cost up to 50% less than all-purpose clusters. 
+Serverless Compute: Fully managed by Databricks. You do not configure nodes or wait for start-up times; 
+                     Databricks instantly allocates resources and charges you purely for active execution time.
 
 
 
 Liquid Clustering:
-Liquid Clustering is a modern data layout optimization feature in Delta Lake that replaces many traditional uses of partitioning and Z-Ordering. It allows Delta tables to continuously reorganize data based on clustering keys without requiring static partitions.
+Liquid Clustering is a modern data layout optimization feature in Delta Lake that replaces many traditional uses of partitioning and Z-Ordering. 
+It allows Delta tables to continuously reorganize data based on clustering keys without requiring static partitions.
 
 Why was Liquid Clustering introduced?
 
@@ -861,6 +922,9 @@ Without using autoloader can we achieve this.
 Yes, but it is not as clear an autoloader.
 I will create a control table with status as success.
 
+If in-case a failure happended in between auto loader read the logs from checkpoint path resume the run 
+were it left. their is no duplicates or will not reprocess that again.
+
 First i will read all files from path and create a list.
 second i will read all entries from the control table into another list.
 Now if first list element is not in the second list then read from source and write into the target.
@@ -965,7 +1029,11 @@ CREATE TABLE cdf_control (
 
 
 ## Lakeflow Declarative pipelines:
-Lakeflow Declarative Pipelines (formerly Delta Live Tables - DLT) is Databricks' declarative framework for building batch and streaming ETL pipelines in SQL and Python. Instead of writing orchestration logic yourself, you declare the desired tables and transformations, and Lakeflow manages dependency resolution, execution, retries, autoscaling, monitoring, and incremental processing.
+Lakeflow Declarative Pipelines (formerly Delta Live Tables - DLT) is Databricks' 
+declarative framework for building batch and streaming ETL pipelines in SQL and Python. 
+Instead of writing orchestration logic yourself, you declare the desired tables and transformations, 
+and Lakeflow manages dependency resolution, execution, retries, autoscaling, monitoring, 
+and incremental processing.
 
 
 Traditional Spark ETL

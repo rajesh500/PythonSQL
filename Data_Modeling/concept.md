@@ -352,6 +352,13 @@ Vector Databases (e.g., Pinecone):
 Uses: Storing data as vector embeddings for AI, machine learning, and semantic searches. 
 
 
+OLAP system:
+drill-down will give a detail information on the table.
+roll-up give you the overview information on the table (ex aggregate data...)
+dice: extract only required information from the data.
+slice: Here one dimension is selected and a new sub-cube is created.
+Ex: let say in cube if you want Q1 information will give only quarter information, which means here the Q1 data will be slice and new sub-cube will be get created.
+pivot: rotate the data (rows to columns).
 
 
 Fact table vs. dimension table (transaction data example)
@@ -476,7 +483,7 @@ dimensions are descriptive tables that provide the business context for the nume
 Types of dimensions:
 Conformed Dimensions:
 Thier is no specific structure of this dimension table.
-If a dimension is used multiple fact tables and it is called conformed dimension.
+If a dimension is used with multiple fact tables and it is called conformed dimension.
 Example: Customer data is used in sales, marketing, orders etc...)
 
 Junk Dimension:

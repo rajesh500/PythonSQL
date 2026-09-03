@@ -68,11 +68,7 @@ Tenant: A Tenant is a single instance of fabric for an organization and is alige
 Workspace: A workspace is a collection of items.
 
 
-Roles:
-Admin  -- All access
-Member 
-Contributor
-Viewer -- see all
+
 
 
 shortcuts:
@@ -80,6 +76,16 @@ shorcuts are objects in onelake that point to other storage locations. The locat
 
 Shortcuts behave like sumbolic links. They are an independent object from the target. If you delete a shortcut, the target remains unaffected. If you move, rename or delete a target path, the shorcut can break.
 
+If you delete MyLakehouse\Files\MyShortcut\Foo\Bar, and you have write permissions in the ADLS Gen2 account, you delete the Bar directory from the ADLS Gen2 account.
+
+If we created a shortcut from adls gen2 into fabric, data remains in adls gen2 only reference will be created and pointed to adls gen2.
+No space requred in fabric.
+Ex: 5TB of ADLS gen2 no space/storage required in fabric.
+
+Internal: workspace to workspace shortcuts can be created.
+External: outside of onelake it is S3 or ADLS...
+Enabling Cache: This option is available at external shorcuts, since external shortcut take time for heavy read operations.
+enabling cache is an option in fabric. (workspace setting --> one lake --> enable enabling cache).
 
 
 Categories:
@@ -202,10 +208,714 @@ Direct T-SQL can be run over here.  (in KQL database)
 -- 
 select PAX_1HR, sum(cast(RowId as int)) from tmp_raw_data where PAX_1HR = 541 group by PAX_1HR  
 
+KQL is a query language, not a database.
+
+KQL cheatsheet
+https://learn.microsoft.com/en-us/kusto/query/sql-cheat-sheet?view=microsoft-fabric
+
+
+Workspace:
+Workspace types means  in terms of how the workspace is licensed/capacity-backed, rather than completely different workspace products.
+My workspace
+Shared/team workspace -- Use for developmeny purpose,multiple members used it.
+Fabric capacity-backed workspace — A workspace assigned to Microsoft Fabric capacity (F SKU). This enables Fabric workloads such as Lakehouse, Warehouse, notebooks, pipelines, Eventhouse, etc.
+Power BI Premium capacity-backed workspace — A workspace assigned to eligible Power BI Premium capacity. Depending on the capacity and tenant configuration, Fabric capabilities can also be available
+
+
+
+Workspace roles:
+Admin   -- ALL
+members     -- Doesn't have permission to create a workspace, update or delete, connection to git repository from workspace, Add or remove people including admin.
+Contributor -- Same as Member + add members or others with lower permissions + Allow others to reshare items
+Viewer      -- all view and read access (like pipeline, notebooks, spark jobs, eventstreams, ML models, KQL database, dashboards)
+               Connect to SQL analytics endpoint of Lakehouse or the Warehouse     
+               Read Lakehouse and Data warehouse data and shortcuts2 with T-SQL through TDS endpoint (ReadData)
+  
+
+
+Git Integration:
+Allow Contributors and Members to switch branches
+By default, branch operations such as Switch branch and Checkout to new branch require the workspace Admin role. However, a workspace Admin can enable the workspace-level setting Allow users with at least Contributor role to change Git branch. When this setting is enabled, Contributors or Members who have write access to all artifacts in the workspace can also switch branches and create new branches under their own identity.
+
+
+
+Encryption enable in workspace.
 
 
 
 
+Lakehouse   vs Warehouse   vs Eventhouse:
+Lakehouse = Data engineering & big data
+Warehouse = SQL analytics & BI
+Eventhouse = Real-time/event analytics
+
+
+Lakehouse:
+Choose a Lakehouse when you're doing data engineering and need to work with large volumes of different types of data.
+
+For example:
+
+S3 / APIs / Files
+       ↓
+Fabric Pipeline
+       ↓
+Lakehouse
+       ↓
+Bronze
+Silver
+Gold
+       ↓
+Notebook / PySpark
+
+You can use Spark, PySpark, Spark SQL, notebooks, and Delta tables.
+
+
+
+Warehouse:
+Choose a Warehouse when your data is highly structured and your users primarily want SQL, dimensional models, and BI reporting.
+
+For example:
+
+             Warehouse
+                 ↓
+        ┌────────┴────────┐
+   Fact_Sales       Dim_Customer
+                         Dim_Product
+                         Dim_Date
+                 ↓
+              Power BI
+You would commonly use T-SQL:
+
+
+Eventhouse:
+Choose an Eventhouse when you're dealing with high-volume, real-time/event data.
+Examples include:
+
+IoT devices
+Application logs
+Website events
+Server telemetry
+Streaming events
+        ↓
+    Eventhouse
+        ↓
+       KQL
+
+KQL is used here.
+
+
+
+OneLake:
+It is unified data lake for whole organization.
+OneLake built on top of ADLS and stores tables in Delta Parquet or Iceberg format.
+
+Flexible connectivity through file explorer, ADLS Gen2 APIs, and Azure service integrations
+
+
+Tenant: Tenant-level policies automatically protect any data that lands in OneLake for security, compliance, and data management.
+
+Workspace: You can create any number of workspaces in your tenant to organize your data. Workspaces enable different parts of the organization to distribute ownership and access policies. Each workspace is part of a capacity that's tied to a specific region and billed separately.
+
+Data items: Workspaces contain data items like lakehouses, warehouses, eventhouses, and KQL databases. Each item type is purpose-built for specific workloads like Spark-based analytics, T-SQL queries, real-time streaming, and more
+
+
+Security:
+Roles based, column based, folder, table, workspace level.
+
+
+Mirroring (Copy):
+In Microsoft Fabric, Mirroring means keeping a near-real-time copy of data from an operational/source database available in Fabric, generally without building a traditional ETL pipeline for every incremental load.
+
+Simple terms original database replicate into fabric, when a change happened in original database immediatley change available in the fabric onelake.
+Mirroring can be create in multiple databases like oracle, postgresql, big query, SAP....
+
+creating can be done by just with workspace -> new item -> Mirror data --> select database.
+
+
+Data Protection built-in capabilities to keep data safe.
+Disaster recovery and data protection   --> oneLake data store in ZRS format (multiple zones)
+
+
+Medallion lakehouse architecture or Medallion architecture:
+
+Bronze (Raw): Store everything exactly as it arrives. No changes are allowed.
+Silver (Enriched): Fix errors, standardize formats, and remove duplicates.
+Gold (Curated): Organize for reports and dashboards.
+
+Iceberg or delta table under the hood data stores in parquet format only.
+Iceberg table can also be stored in ORC or Avro format but most commonly used is parquet.
+
+
+
+
+
+Dataflow Gen1     VS    Dataflow Gen2:
+Dataflow Gen1 and Dataflow Gen2 both provide low-code data transformation using Power Query, but Gen2 is designed for the Fabric ecosystem and modern data-engineering scenarios.
+Gen1 = Power BI-focused data preparation
+Gen2 = Fabric-focused data ingestion and transformation
+
+
+Dataflow Gen2     VS    Copy Job:
+Dataflow Gen2 = Transform the data
+Copy Job = Move/replicate the data
+
+
+copy job, copy data from multiple source to fabric.
+Best of Data Ingestion/Replication.
+
+
+Example
+Suppose SQL Server has:
+CustomerID | FirstName | LastName | State | Salary
+---------------------------------------------------
+101        | Raj       | Jakkula  | TX    | 100000
+102        | John      | Smith    | CA    | 120000
+
+If your requirement is simply:
+"Move this table into Fabric."
+
+Use Copy Job:
+
+SQL Server
+     ↓
+   Copy Job
+     ↓
+Fabric Lakehouse
+
+
+But suppose your requirement is:
+"Take the customer data, remove nulls, filter TX customers, combine first and last name, join another table, and then load it."
+Use Dataflow Gen2:
+
+SQL Server
+     ↓
+Dataflow Gen2
+     ↓
+Filter
+     ↓
+Remove Nulls
+     ↓
+Join
+     ↓
+Derived Columns
+     ↓
+Lakehouse / Warehouse
+
+
+Dataflow Gen2           VS          Pipeline:
+Dataflow Gen2 = Transform data
+Data Pipeline = Orchestrate and move data
+
+
+
+Example:
+Suppose your requirement is:
+Get customer data from SQL → remove nulls → join with Orders → calculate TotalSales → load into Lakehouse.
+Dataflow Gen2 is a good fit:
+
+SQL
+ ↓
+Dataflow Gen2
+ ↓
+Remove Nulls
+ ↓
+Join Customers + Orders
+ ↓
+Calculate TotalSales
+ ↓
+Lakehouse
+
+You're primarily transforming data using Power Query.
+
+
+
+Now suppose your requirement is:
+Copy SQL data → run notebook → run Dataflow Gen2 → load Warehouse → execute another process.
+Use a Pipeline:
+Fabric Pipeline
+      │
+      ├── Copy Activity
+      │       ↓
+      ├── Notebook
+      │       ↓
+      ├── Dataflow Gen2
+      │       ↓
+      └── Other downstream activities
+
+The important thing here is that a Pipeline can call a Dataflow Gen2.
+
+
+
+
+Copy Job → Copy
+Dataflow Gen2 → Transform
+Pipeline → Orchestrate
+
+
+copy job vs copy data in pipeline:
+copy job just copy the data(replication)
+copy data or copy activity: activity inside a large workflow pipeline.
+Means multiple table data copy into lakehouse this we will be done in a pipeline using copy activity.
+
+Copy Job Example:
+For example, suppose you have 20 SQL tables and your only requirement is:
+
+SQL Database
+   ↓
+Copy 20 tables
+   ↓
+Fabric Lakehouse
+
+
+Copy activity:
+1. Get table list from control table
+        ↓
+2. ForEach table
+        ↓
+3. Copy Data
+        ↓
+4. If copy succeeds
+        ↓
+5. Run Notebook
+        ↓
+6. Run Stored Procedure
+        ↓
+7. Update audit/control table
+
+Now you need a Pipeline, and Copy Activity performs the actual source → destination data movement inside that orchestration.
+
+
+
+
+Notebook: develop, prepare and analyze using spark
+SQL analytic endpoint: Query data using T-SQL
+Eventhouse endpoint: Real-time analytics using KQL.
+
+
+KQL vs Pyspark:
+KQL (Kusto Query Language) and Apache Spark are distinct tools built for different tasks: KQL is an ultra-fast, interactive query language optimized for real-time log, telemetry, and time-series analytics. Apache Spark is a heavy-duty, distributed cluster-computing framework designed for large-scale data engineering, ETL pipelines, and machine learning across data lakes
+
+KQL to view fast results.
+
+
+
+🔹 SQL
+
+- Best for structured analytics
+- Lakehouse SQL Endpoint & Data Warehouse
+- Familiar for BI and reporting professionals
+
+🔹 KQL (Kusto Query Language)
+
+- Optimized for logs, telemetry, and time-series analytics
+- Extremely fast for filtering and aggregations
+- Perfect for Real-Time Intelligence
+
+🔹 PySpark
+
+- Ideal for large-scale ETL and data engineering
+- Handles complex transformations
+- Best choice for distributed processing in notebooks.
+
+
+Why KQL is faster:
+it works faster because built on azure data explorer engine to process massive, high volume log and time-series data using optimized storage and distributed parallel computing.
+
+Core architecture features:
+columnar storage: data stored in columns instead of rows.
+automatic indexing: The engine indexes text, numbers, and tags on ingestion without requiring manual index creation or complex database tuning.
+Built-in Compression: reduce physical store sizes.
+Distributed parallel processing:
+In memory cache for hot data.
+
+
+
+
+
+spark setting: (starter pool)  default one or create custom pool
+spark setting --> customize compute configuration for items (enable this).
+If this option is enabled in the notebooks spark cluster (compute) configuration can change.
+If it is turned of workspace default pool will used default.
+
+A starter pool in Microsoft Fabric is a default, Microsoft-managed Apache Spark compute pool that uses pre-warmed capacity to start Spark sessions in seconds (typically 5 to 10 seconds) instead of waiting minutes for a new cluster to provision.
+
+
+starter pool:
+node size: Meduim
+Node family:  Memory optimized
+Auto scale: true
+Dynamically allocate executor: true
+
+limit:
+data size: large data can't process.
+
+
+Custom pool:
+spark session startup time 2-3 minuntes   
+
+
+High Concurrency:
+For notebooks --> allow user, to access multiple notebook under one spark session
+For pipeline running multiple notebooks: allow multiple notebook to run parallel.
+
+
+Manage connectinos and gateway:
+Manage connections and gateways is the central place where Fabric stores and manages access to databases, APIs, storage accounts, SaaS applications and on-premises systems.
+
+Main Components:
+connections
+on-premises data gateways
+virtual network data gateways
+Streaming virtual network data gateways 
+Azure key value references.
+
+
+Gateway:
+A gateway provides the network route between Fabric and a source that Fabric cannot access directly.
+Source location                            Gateway requirement
+Public cloud database                      Usually no gateway
+Public REST API                            Usually no gateway
+On-premises SQL Server                     On-premises data gateway
+Database inside private Azure VNet         Virtual network data gateway
+Firewall-protected private endpoint        VNet gateway/private connectivity
+Fabric Lakehouse/OneLake                   Normally no gateway
+
+
+A connection contains authentication and endpoint details. A gateway provides network connectivity.
+
+Example: a postgresql connection can be create here.
+
+Creating an on-premises connection -- required to install gateway.
+
+
+Azure key value keep credentials or sensitive information, create a reference in fabric and reuse them in the pipeline or data flow.
+
+
+
+Variable library:
+A Variable Library in Microsoft Fabric is a centralized place to store configuration values that can be reused by notebooks, pipelines, Dataflow Gen2, Copy Jobs, and other supported Fabric items.
+
+Its main purpose is to avoid hardcoding environment-specific values.
+
+Accessing:
+config = notebookutils.variableLibrary.getLibrary("VL_RETAIL_CONFIG") --- VL_RETAIL_CONFIG variable library name
+environment = config.env  --> env is variable name
+print(environment)
+
+
+
+
+## What gets deployed:
+Component                                 DEV → TEST
+Notebook definitions                      Yes
+Data-pipeline definitions                 Yes
+Lakehouse definitions/metadata            Yes
+Variable Library                          Yes, when supported
+Semantic models and reports               Yes
+Lakehouse table data/files                No
+PostgreSQL source data                    No
+Passwords and secrets                     No
+Gateway installation                      No
+Workspace permissions                     No
+External database schema changes          No
+
+
+
+Deployment can be done two ways
+1. Fabric deployment pipeline  simple easy, good for small to medium projects.
+2. Azure devops (dev workspace to git)
+
+
+
+Different user accounts, same Entra tenant
+
+Example:
+
+User A owns DEV workspace
+User B owns TEST workspace
+Both workspaces are in Tenant ABC
+
+You can use a normal Fabric Deployment Pipeline if:
+
+Both workspaces are in the same Fabric tenant.
+Both workspaces are assigned to Fabric capacity.
+The deployment user has the required access to both.
+Neither workspace is assigned to another Deployment Pipeline.
+
+Give the deployment identity at least:
+
+DEV workspace  → Contributor or higher
+TEST workspace → Contributor or higher
+
+Then assign:
+d
+Development stage → DEV workspace
+Test stage        → TEST workspace
+
+The fact that different users originally created the workspaces does not matter. Workspace and pipeline permissions control deployment.
+
+Case 2: DEV and TEST are in different Entra tenants
+
+Example:
+
+DEV  → Tenant A / Company A
+TEST → Tenant B / Company B
+
+A normal Fabric Deployment Pipeline is not the right method because its stages operate within the Fabric tenant where that deployment pipeline exists.
+
+
+Tenant A DEV workspace
+        ↓ Commit item definitions
+Shared Git repository
+        ↓ CI/CD runner
+Authenticate to Tenant B
+        ↓
+fabric-cicd or Fabric REST API
+        ↓
+Tenant B TEST workspace
+
+
+
+
+Scheduling:
+Using Apache airflow:
+Fabric pipeline can be orchestrate using apache airflow.
+Here airflow will do only orchestration but exection we be done inside the fabric only.
+With in the fabric itself apache airflow is available.
+
+
+How it works:
+1. register the app in Entra ID and 
+2. provide necessary permissions and 
+3. get the pipeline URL(REST API)
+4. create a fabric connection, 
+5. create a dag 
+6. schedule it and 
+7. wait for completion.
+
+In the airflow dag we are going to provide workspace ID, fabric_conn_id, item_id, pipeline id, etc... in the fabricrunitemoperator.
+With this informaiton ariflow sent a API request to run the pipeline.
+
+
+https://app.fabric.microsoft.com/groups/9fff04e5-2500-4a41-a35c-ddb633699de3/pipelines/e651904b-8509-46de-9627-9ade5790d3d4?experience=fabric-developer
+
+Scheduling can be done in Data factory and airflow.
+
+
+
+Domains:
+A Domain in Microsoft Fabric is a logical business grouping used to organize and govern Fabric workspaces and their data products.
+Example:
+Sales
+Finance
+Human Resources
+Marketing
+Supply Chain
+Customer Analytics
+
+
+OneLake File Explorer:
+OneLake File Explorer is a Windows application that allows you to browse and manage Microsoft Fabric OneLake data through Windows File Explorer, similar to OneDrive.
+
+
+Local changes automatically sync to OneLake when the application is running and online:
+However, changes made directly in Fabric or by another user don’t necessarily appear automatically in File Explorer.
+These need to be sync or refresh it.
+
+
+Be careful with the Tables folder. A Delta table contains:
+
+Tables/customers/
+├── part-....parquet
+└── _delta_log/
+
+Do not manually edit, rename or delete individual Parquet or _delta_log files. That can corrupt the Delta table.
+
+Use Spark or SQL for table operations:
+spark.sql("DELETE FROM customers WHERE customer_id = 100")
+
+
+Apache Airflow Job Settings (aka Data workflows):
+
+Apache Airflow Jobs in Microsoft Fabric is a managed Apache Airflow service within Fabric Data Factory.
+It lets you create, schedule, execute and monitor Python-based Airflow DAGs without installing and maintaining your own Airflow servers.
+
+
+
+Workload:
+In Microsoft Fabric, a workload is a collection of tools and capabilities designed for a particular type of data or analytics work.
+
+For example:
+
+Data Factory is the workload for data integration.
+Data Engineering is the workload for Spark and Lakehouse development.
+Power BI is the workload for reporting and visualization.
+
+
+
+version control:
+Managing the lifecycle of Fabric items using CI/CD has two parts: integration and deployment. Integration is implemented using Git. Deployment is implemented using Fabric deployment pipelines. Automation of deployment or integration is implemented using Fabric REST APIs.
+
+Microsoft Fabric CI/CD can use Azure DevOps or GitHub, but we need to distinguish Git version control from the CI/CD automation platform.
+
+Git is the version-control system.
+Azure Repos/GitHub hosts the Git repository.
+Azure Pipelines/GitHub Actions performs automated deployment.
+Fabric deployment pipelines or Fabric REST APIs promote content across environments.
+
+
+Stage: means nothing but a environment in the application life cycle.
+Dev or test or prod.
+
+
+stage setting:
+It controls how the workspace appears to users who have workspace access but do not have access to the deployment pipeline.
+
+
+Run time parameters we can take at variable library.
+config = notebookutils.variableLibrary.getLibrary("AppConfig")     --> parameters and variables.
+environment = config.Env
+print(f"Environment: {environment}")
+
+
+Rules: 
+A deployment rule in a Microsoft Fabric deployment pipeline changes an environment-specific property when an item is deployed to a target stage.
+
+In simple terms:
+Deploy the same item, but replace its Dev configuration with Test or Production configuration.
+
+
+Ex:
+A semantic model in Development connects to:
+Server: sql-dev.company.com
+Database: SalesDev
+
+Create a rule in the Test stage:
+Server: sql-test.company.com
+Database: SalesTest
+
+* during deployment time we can change the config example pipeline need to tag to another workspace then rule is useful.
+
+
+Deployment rule:
+Deployment rules in Microsoft Fabric let you override environment-specific settings when content moves from one deployment stage to another.
+
+Types of deployment rules:
+Rule type                           Supported items                                                               Purpose
+Data source rule              Semantic model, Dataflow Gen1, paginated report, mirrored database             Changes server or data source
+Parameter rule                Semantic model, Dataflow Gen1                                                  Changes parameter values
+Default Lakehouse rule        Notebook                                                                       Changes the notebook’s attached default Lakehouse
+
+
+Limitations:
+deployment rules not applicable to fabric data pipelines, dataflow gen2, lakehouse, warehouse
+
+
+
+In git we can commit table DDL as well 
+
+
+
+database project:
+A database project in Microsoft Fabric is a source-controlled, file-based representation of a Fabric Warehouse schema.
+Instead of keeping all database objects only inside the live Warehouse, each table, view and stored procedure is represented as SQL code in a Git repository.
+
+Database project = Warehouse structure as code.
+
+It contains schema definitions, not business data
+
+
+
+A database project represents these objects as files:
+
+SalesWarehouse/
+├── SalesWarehouse.sqlproj
+├── dbo/
+│   ├── Tables/
+│   │   ├── Customer.sql
+│   │   ├── Product.sql
+│   │   └── Sales.sql
+│   ├── Views/
+│   │   └── ActiveCustomers.sql
+│   └── StoredProcedures/
+│       └── LoadSales.sql
+
+
+Git does contain: tables, views, procedures, functions, schemas, data types, constraints etc....
+
+doesn't contain: table rows, production data, query history, passwords, execution logs etc...
+
+.sqlproj is a database project.
+
+
+A DACPAC contains the compiled database schema model—not table data.
+
+
+
+Two ways to use database projects with Fabric:
+Fabric built-in Git integration
+
+When a Fabric workspace containing a Warehouse is connected to Git:
+
+Fabric extracts the Warehouse schema.
+It represents the schema as a database project.
+Objects appear as individual .sql files.
+Developers commit changes to Git.
+Git changes can be synchronized back to Fabric.
+
+Fabric uses DacFx-based schema extraction and deployment.
+
+Visual Studio Code development
+
+You can develop locally using:
+
+Visual Studio Code
+SQL Database Projects extension
+MSSQL extension
+.NET SDK
+DacFx/SqlPackage
+
+
+
+
+git repository clone in to local and open in VS code, start working on schema DDL's and publish it to warehouse from VS code.
+
+
+dacpac:
+How a DACPAC is deployed
+
+Assume the DACPAC contains:
+
+CREATE TABLE dbo.Customer
+(
+    CustomerID BIGINT,
+    CustomerName VARCHAR(200),
+    EmailAddress VARCHAR(250)
+);
+
+But the Test Warehouse currently has:
+
+CREATE TABLE dbo.Customer
+(
+    CustomerID BIGINT,
+    CustomerName VARCHAR(200)
+);
+
+During deployment:
+
+DacFx reads the DACPAC.
+DacFx reads the Test Warehouse schema.
+It compares the two schema models.
+It identifies the missing EmailAddress column.
+It generates an incremental deployment plan.
+It applies the required change.
+
+Conceptually:
+
+ALTER TABLE dbo.Customer
+ADD EmailAddress VARCHAR(250);
+
+The table’s existing rows are retained.
 
 
 
