@@ -907,3 +907,28 @@ Suitability for BI Tools    Ideal for BI tools and quick reporting       Better 
 Data Integrity          Lower data integrity due to redundancy          Higher data integrity due to normalization
 Updates and Modifications   More difficult to update due to denormalization     Easier to update as data is normalized
 Learning Curve          Easier to learn and implement                   More complex to learn and implement
+
+
+
+
+Data Migration from OLTP system to OLAP system:
+using ETL/ELT
+OLTP system has the current data, if data changes then lastmodified or recent update some field is thier based on this field, data need to be pulled.
+
+In azure using ADF we will move data from OLTP to OLAP system.
+let say if we have 200 tables, creating a separte pipeline for each table would be not an ideal design.
+
+create a metadata drive approach.
+large table create a separate pipeline for each.
+small volume tables create a metadatad driven approach.
+
+create a metadata table and maintain old and new watermark fields on this table.
+
+lookup activity --> for each acitivty --> copy activity
+source data base generate a dynamic query and write into ADLS account or bronze layer.
+
+bronze to implement scd-type2 and insert data into silver. silver to gold direct load.
+
+
+
+

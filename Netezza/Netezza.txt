@@ -1,9 +1,9 @@
 Netezza:
 
 Before netezza if a company want to setup their data warehouse, there are lot of thing they need to take care about like
-database types, softwares, serves, storage types networking, os, integration and hardware and softwares...
+database types, softwares, serves, storage types, networking, os, integration and hardware and softwares...
 
-All these takes months of time.
+All these steps takes months of time.
 
 Where netezza introduce and those components available in one place, using netezza load data and query for fast result.
 
@@ -234,8 +234,7 @@ The cost of different execution plans
 
 
 
-Zone Map is like partition 
-organize on is controls how rows are organized inside that data slice.
+Zone Map has the min and max value of each slice.
 
 
 
@@ -251,13 +250,63 @@ If the rows are physically organized by SALE_DATE, Netezza’s zone maps can ide
 
 It skips the other extents instead of scanning all ten years.
 
+Extent eliminate:
+it is a Netezza query-optimization technique that avoids scanning disk extents that cannot contain the requested data.
+The table contains three years of data loaded in date order:
+
+Extent  Minimum sale_date   Maximum sale_date
+Extent 1    2024-01-01  2024-12-31
+Extent 2    2025-01-01  2025-12-31
+Extent 3    2026-01-01  2026-12-31
+
+SELECT SUM(amount)
+FROM sales
+WHERE sale_date BETWEEN DATE '2026-01-01'
+                    AND DATE '2026-01-31';
+
+Netezza checks the zone maps:
+
+Extent 1 ends in 2024, so it is skipped.
+Extent 2 ends in 2025, so it is skipped.
+Extent 3 may contain January 2026 data, so it is scanned.
+
+This is called extent elimination. Netezza produces the result without reading all three extents.
+
+
+S-Blade:
+An S-Blade, meaning Snippet Processing Blade, is the physical processing component in a Netezza appliance. It contains the hardware required to process query portions in parallel.
+
+Each S-Blade typically contains:
+
+Multiple CPU cores
+Memory
+FPGA processors
+Connections to storage disks
+Multiple Snippet Processing Units (SPUs)
+
+
+
+The processing flow is:
+
+The Netezza host receives and optimizes the SQL.
+The host creates smaller units of work called snippets.
+Snippets are sent to SPUs across the S-Blades.
+Each SPU processes the data stored on its assigned disk/data slice.
+FPGA components filter unnecessary rows and columns while data is read.
+SPU CPUs perform operations such as joins, aggregations and sorting.
+Partial results are sent back through the network fabric.
+The host combines the partial results and returns the final output.
+
+
+
+
 
 char vs varchar:
 char is fixed length and add spaced if size doesn't meets
 example:
 char(8) --> expecting 8 characters if 7 characters is inserted then 8 one will be space added to the value during insert.
 
-varchar: is fixed length
+varchar: is not fixed length
 example: varchar(8) it accept 8 if 7 values string is their still it accept space won't added.
 
 
@@ -319,9 +368,22 @@ Azure DMS (data migration service) is not right option to migrate data from nete
 
 
 
+Data skew and how to identify/fix it:
+skew occurs because of data is not evenly distributed.
+Example: let say if distribution is done based on region
+one region can have more data and other region can have less data which causes the skew ness.
+lower data region spu are completed faster and large one take time which causes the data skewness.
 
+Fix: analyze the table and choose the high cardinality column for the distribution.
+Now data evenly distribute.
+example: customer id column.
+Netezza database create a slice for each customer id.
 
-
+Customer ID Assigned slice
+101 Slice 3
+102 Slice 7
+103 Slice 1
+104 Slice 5
 
 
 

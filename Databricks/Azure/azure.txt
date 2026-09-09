@@ -48,7 +48,15 @@ GRS (region protection)
 
 
 Blob vs ADLS:
-Azure Blob Storage is a flat-namespace object store designed for general-purpose, unstructured data. Azure Data Lake Storage (ADLS) Gen2 is built on top of Blob Storage but adds a hierarchical namespace
+Azure Blob Storage is a flat-namespace object store designed for general-purpose, unstructured data. 
+Ex: Image, videos, documents, etc....
+    blob has containers and blobs
+
+Azure Data Lake Storage (ADLS) Gen2 is built on top of Blob Storage but adds a hierarchical namespace.
+Ex: Directories, sub directories, Files, etc...
+main used for analytic purpose.
+
+Containers, directoreis, files..
 
 
 

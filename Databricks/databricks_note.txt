@@ -352,8 +352,8 @@ Spark prepares the execution plan, while Photon executes supported parts of that
 
 Computer:
 Three types
-1. Job Cluster
-2. Interactive Cluster
+1. All purpose
+2. Job Cluster
 3. Serverless compute for Job
 
 
@@ -477,6 +477,10 @@ df.persist(StorageLevel.MEMORY_ONLY)
 df.persist(StorageLevel.MEMORY_AND_DISK)
 df.persist(StorageLevel.DISK_ONLY)
 
+Cache(): data store in primarily executor memory and, depending on the storage level, local executor disk.
+persist() has three options.
+persist(StorageLevel.MEMORY_AND_DISK) is generally safer than relying on cache().
+this is used in production.
 
 workflow - jobs 
 Task level:
@@ -598,43 +602,35 @@ In my databricks projects, i use delta lake for incremental processing, CDC impl
 Gold layers in a medallion architecture.
 
 Example:
-
 schema enforcement:
+Schema enforcement validates incoming data against the Delta table schema and rejects incompatible writes, protecting data quality.
 
-Df=spark.createDataFrame([(1, “rama”, “bangalore”),(2, “Krishna”, “Chennai”),(3, “sai”, “Chennai”)], [“cid”, “cname”, “clocation”])
-Df.show()
+Suppose the target Delta table has:
 
-Df.write.format(‘parquet’).save(“/FileStore/tables/parquetdata/”). – normal flow floder data
+customer_id  BIGINT
+name         STRING
+email        STRING
 
-Df.write.format(‘delta’).save(“/FileStore/tables/deltadata/”). –delta data folder
+Incoming data has:
+
+customer_id  BIGINT
+name         STRING
+phone        STRING
+
+A normal append can fail because phone is not part of the target schema:
+
+incoming_df.write \
+    .format("delta") \
+    .mode("append") \
+    .saveAsTable("prod.silver.customers")
+
+This is schema enforcement. Delta validates the write before accepting the data, protecting the table from accidental schema changes.
 
 
-
-
-
-Df1=spark.createDataFrame([(1, “rama”, “bangalore”, 8888),(2, “Krishna”, “Chennai”, 9999),(3, “sai”, “Chennai”, 7777)], [“cid”, “cname”, “clocation”, “ccontact”])
-Df.show()
-
-
-Df1.write.mode(“overwrite”).format(“parquet”).save(“/FileStore/tables/parquetdata/”)
-
-Df1.write.mode(“overwrite”).format(‘delta’).save(“/FileStore/tables/deltadata/”)
-Error return: A schema mismatch detected
-
-
-Df1.write.mode(“overwrite”).format(‘delta’).option(“mergeSchema”, True).save(“/FileStore/tables/deltadata/”)
-
-Df1.write.mode(“append”).format(‘delta’).option(“mergeSchema”, True).save(“/FileStore/tables/deltadata/”)
-
-Spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”).show()
 
 Time travel:
 spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, timestampAsOf=”dateofdataload”).show()
-
-
-
 spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, versionAsOf=0).show()
-
 spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, versionAsOf=1).show()
 
 
@@ -1550,17 +1546,90 @@ In this scenario, you don't write any checkpoint code—Delta Lake manages trans
 
 
 
+## Delta vs Delta live table
+🔹 Delta Table – The foundation
+A storage format powered by Delta Lake, giving you:
+✅ ACID transactions
+✅ Time travel for historical queries
+✅ Schema enforcement & evolution
+✅ Efficient upserts and deletes
+
+🔹 Delta Live Table – The orchestrator
+A managed ETL pipeline framework that:
+✅ Automates table creation & updates
+✅ Manages dependencies between tables
+✅ Ensures data quality with built-in expectations
+✅ Supports Medallion Architecture (Bronze → Silver → Gold)
+
+
+
+Delta live tables:
+it is a declarative ETL framework that simplifies building, managing, and monitoring reliable data pipelines.
+This pipeline itself handle data quality, error handling .....
+which means do the transformation not back end orchestration..
+
+delta live tables is available for only premium account.
+delta live table has three options during pipeline creation core, advance, premium 
+1. core is basic tranformation, no CDC
+2. CDC, no governance, data quality etc...
+3. premium has all the options.
 
 
 
 
+Databricks Workspace architecture:
+A Databricks workspace is a collaborative environment used to develop, execute, secure, monitor, and manage data engineering, analytics, data science, and AI workloads.
+
+At a high level, Databricks architecture has two major parts:
+1. Control plane
+2. Compute plane
+
+control plane:
+The control plane is primarily managed by Databricks. It provides the management and orchestration services for a workspace.
+
+It handles:
+Databricks web interface
+Workspace configuration
+Notebook and repository management
+Job and workflow definitions
+Compute configuration
+Cluster orchestration
+REST API services
+Authentication and authorization
+Query planning and job coordination metadata
+Monitoring information
+Unity Catalog integration
+
+Compute Plane
+
+The compute plane contains the resources that execute the actual workload.
+
+It handles:
+Spark execution
+Databricks SQL queries
+ETL and ELT transformations
+Machine-learning workloads
+Reading from source systems
+Writing to cloud storage
+Shuffle operations
+Caching and temporary processing
+
+The compute plane can include:
+Classic compute
+Serverless compute
+SQL warehouses
+Job compute
+All-purpose compute
+Delta Live Tables or Lakeflow pipeline compute
 
 
 
+classic compute         vs      serverless compute:
+classic compute:
+With classic compute, the compute resources run inside the customer’s cloud account or subscription.
 
-
-
-
+serverless compute:
+With serverless compute, Databricks manages the underlying compute infrastructure.
 
 
 

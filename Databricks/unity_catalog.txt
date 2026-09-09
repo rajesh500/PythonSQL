@@ -1,0 +1,368 @@
+unity catalog architecture:
+
+There are five principal architectural layers:
+Databricks account and identity layer
+Unity Catalog metastore
+Workspace and compute layer
+Metadata and authorization layer
+Cloud-storage data layer
+
+
+1. Databricks Account Layer:
+Unity Catalog starts at the Databricks account level, above individual workspaces.
+Databricks Account
+├── Users
+├── Groups
+├── Service principals
+├── Unity Catalog metastore
+└── Databricks workspaces
+
+Users, groups and service principals are account-level identities.
+
+2. Unity Catalog Metastore:
+The metastore is the central component of Unity Catalog architecture.
+
+It stores governance metadata such as:
+Catalog and schema definitions
+Table and view definitions
+Object ownership
+Permissions and grants
+Storage credentials
+External locations
+Connections
+Lineage information
+Sharing metadata
+
+It does not normally contain the actual business-table data.
+Unity Catalog metastore
+├── Metadata
+├── Permissions
+├── Storage-access definitions
+└── Data lineage
+
+The actual data stays in ADLS Gen2, S3 or GCS.
+
+
+3. Metadata Namespace Layer:
+Inside the metastore, objects follow a three-level namespace:
+
+Catalog
+└── Schema
+    └── Object
+
+
+4. Workspace and Compute Layer:
+Users work inside a Databricks workspace using:
+
+Notebooks
+Databricks SQL
+Workflows
+Lakeflow pipelines
+SQL warehouses
+
+The workspace itself does not own the Unity Catalog objects. It provides an interface and compute resources for accessing them.
+
+5. Storage-Access Layer:
+For data stored in external cloud storage, Unity Catalog uses:
+Cloud identity
+      ↓
+Storage credential
+      ↓
+External location
+      ↓
+External table or volume
+      ↓
+ADLS Gen2 path
+
+
+what is the use of unity catalog in databricks before catalog how it worked and what issues does unity catalog solved.
+What is Unity Catalog?
+
+Unity Catalog is Databricks’ centralized governance layer for data and AI assets. It controls:
+
+What data and AI assets exist
+Where the underlying data is stored
+Who can access each asset
+What operations users can perform
+How data moves between sources and targets
+Who accessed or changed an asset
+
+It governs objects such as tables, views, files/volumes, functions, machine-learning models, external locations and connections across multiple Databricks workspaces. Databricks Unity Catalog overview
+
+Before Unity Catalog:
+Databricks primarily used the legacy workspace-local Hive metastore.
+The namespace normally had two levels:
+database.table
+
+Example:
+SELECT * FROM sales.orders;
+
+Each workspace generally had its own Hive metastore:
+
+Development workspace → Dev Hive metastore
+Test workspace        → Test Hive metastore
+Production workspace  → Production Hive metastore
+How access worked
+
+Organizations commonly used a combination of:
+
+Hive metastore table ACLs
+Workspace-local users and groups
+Cluster permissions
+Cloud storage permissions
+DBFS mounts
+Service principals and storage keys
+Secrets stored in Databricks secret scopes
+Separate external governance/catalog products
+
+For example, a storage account might be mounted using a service principal:
+
+dbutils.fs.mount(
+    source="abfss://container@account.dfs.core.windows.net/",
+    mount_point="/mnt/sales",
+    extra_configs={
+        "fs.azure.account.oauth2.client.secret": dbutils.secrets.get(
+            scope="storage-secrets",
+            key="client-secret"
+        )
+    }
+)
+
+A user who gained access to the cluster or mount could potentially access the underlying files directly, even if the intended table permissions were more restrictive.
+
+Problems with the legacy approach
+Problem	Before Unity Catalog
+Governance scope	Primarily workspace-level
+Namespace	database.table
+Users and groups	Often workspace-local
+Cross-workspace access	Difficult to manage consistently
+Storage credentials	Frequently configured on clusters or mounts
+File-level security	Hard to centrally enforce
+Data lineage	Limited or dependent on external tools
+Auditing	Fragmented across workspaces and cloud services
+Data discovery	No unified enterprise catalog
+Fine-grained security	More limited and difficult to standardize
+Data sharing	Copies, exports or custom solutions were common
+ML governance	Separate from table governance
+Permission administration	Frequently duplicated across workspaces
+
+For example, if an organization had five workspaces, administrators might need to create the same groups, 
+register similar tables and reproduce permissions five times.
+
+How Unity Catalog works
+Unity Catalog introduces an account-level governance model. 
+A Unity Catalog metastore is assigned to one or more Databricks workspaces, normally within the same cloud region.
+
+It uses a three-level namespace:
+
+catalog.schema.object
+
+For example:
+
+SELECT *
+FROM production_sales.curated.orders;
+
+Here:
+
+production_sales is the catalog
+curated is the schema
+orders is the table
+
+A common design is:
+
+dev_sales.bronze.customer
+dev_sales.silver.customer
+dev_sales.gold.customer_summary
+
+test_sales.bronze.customer
+test_sales.silver.customer
+test_sales.gold.customer_summary
+
+prod_sales.bronze.customer
+prod_sales.silver.customer
+prod_sales.gold.customer_summary
+
+Catalogs are commonly used as isolation boundaries for environments, business units or data domains.
+
+Issues solved by Unity Catalog
+1. Centralized access control
+
+Permissions are managed centrally and can apply across workspaces.
+
+GRANT USE CATALOG
+ON CATALOG prod_sales
+TO `sales_analysts`;
+
+GRANT USE SCHEMA
+ON SCHEMA prod_sales.gold
+TO `sales_analysts`;
+
+GRANT SELECT
+ON TABLE prod_sales.gold.monthly_revenue
+TO `sales_analysts`;
+
+This provides one consistent permission model for SQL, notebooks, jobs and BI tools.
+
+2. Account-level identities
+
+Unity Catalog permissions use account-level users, groups and service principals instead of relying solely on workspace-local identities.
+
+For example:
+
+Group: sales_analysts
+        ↓
+SELECT on prod_sales.gold tables
+        ↓
+Available from authorized workspaces
+
+This reduces duplicated identity and permission management. The legacy Hive metastore, by comparison, applies permissions to workspace-local identities. Legacy Hive metastore comparison
+
+3. Secure storage access
+
+Unity Catalog introduces governed objects such as:
+
+Storage credentials
+External locations
+External tables
+Managed tables
+Managed and external volumes
+
+Instead of giving every cluster a storage secret, an administrator creates a storage credential and external location:
+
+CREATE EXTERNAL LOCATION migration_landing
+URL 'abfss://landing@companylake.dfs.core.windows.net/netezza'
+WITH (STORAGE CREDENTIAL adls_migration_credential);
+
+Users can receive access to the governed location without receiving the underlying Azure credential:
+
+GRANT READ FILES
+ON EXTERNAL LOCATION migration_landing
+TO `migration_engineers`;
+4. Reduced direct file-access bypass
+
+Previously, users might query files directly:
+
+spark.read.parquet("/mnt/prod/customer")
+
+That could bypass table-level governance.
+
+With Unity Catalog, access to tables, volumes and external locations is checked through a centralized authorization model. This improves control and auditability, provided the underlying cloud storage is configured so users cannot bypass Unity Catalog directly.
+
+5. Fine-grained security
+
+Unity Catalog supports controls such as:
+
+Table and view permissions
+Row filters
+Column masks
+Dynamic views
+Tags and attribute-based access policies
+Workspace-to-catalog bindings
+
+Example of column masking:
+
+CREATE FUNCTION security.mask_email(email STRING)
+RETURN CASE
+    WHEN is_account_group_member('customer_pii_users')
+        THEN email
+    ELSE 'REDACTED'
+END;
+
+The function can then be applied as a column mask so authorized users see the email while other users see a redacted value.
+
+6. Automated lineage
+
+Unity Catalog can capture relationships such as:
+
+Netezza landing data
+        ↓
+Bronze customer table
+        ↓
+Silver standardized customer
+        ↓
+Gold customer revenue
+        ↓
+Power BI dashboard
+
+This helps answer:
+
+Where did this column come from?
+Which jobs modified this table?
+Which downstream tables will be affected?
+Which dashboards use this data?
+
+Unity Catalog provides lineage across supported data and AI assets. Unity Catalog capabilities
+
+7. Centralized auditing
+
+Unity Catalog-related system tables and audit logs help identify:
+
+Who queried a table
+Who changed permissions
+Who created or deleted an object
+Which service principal executed a job
+When sensitive data was accessed
+
+This is important for security investigations and regulatory compliance.
+
+8. Data discovery
+
+Users can use Catalog Explorer to search and understand available assets, including:
+
+Tables and columns
+Owners
+Comments
+Tags and classifications
+Lineage
+Sample data
+Permissions
+Usage information
+
+This reduces duplicate datasets and makes trusted data easier to find.
+
+9. Governed data sharing
+
+Unity Catalog supports secure sharing of live data and AI assets through sharing capabilities such as Delta Sharing/Open Sharing. 
+This can avoid exporting and copying files for every consumer.
+
+10. Unified data and AI governance
+
+The same governance model can cover more than tables:
+
+Structured tables and views
+Unstructured files through volumes
+Functions
+ML models
+Feature-related assets
+Connections and external data sources
+Model services and other AI assets
+
+
+Hive metastore  versus  Unity Catalog:
+Feature	Legacy              Hive metastore	                    Unity Catalog
+Scope	                    Workspace-level	                Account-level across workspaces
+Namespace	                database.table	                catalog.schema.object
+Identities	                Workspace-local groups	        Account-level identities
+Permissions	Mainly tables/views	Data, files, functions, models and more
+Storage governance	Mounts and cluster credentials common	Storage credentials and external locations
+Lineage	                    Limited	                        Built-in automatic lineage
+Auditing	                Fragmented	                    Centralized auditability
+Data discovery	            Workspace-oriented	            Central Catalog Explorer
+Row/column security	More manual	Row filters, masks and governed policies
+Data sharing	            Custom copying/export	        Governed sharing
+Environment isolation	    Separate workspaces/metastores	Catalog and workspace bindings
+ML governance	            Separate	                    Integrated with Unity Catalog
+
+
+
+Delta table      versus       Parquet table
+Capability	                    Parquet	                            Delta
+Data storage	                Parquet files	                   Parquet files
+Transaction log	                    No	                                    Yes
+ACID transactions	            No	                                    Yes
+UPDATE and DELETE	            Not natively transactional	            Yes
+MERGE	                            No	                                    Yes
+Time travel	                    No	                                    Yes
+Schema enforcement	            Limited	                            Yes
+Concurrent-write safety	            Limited	                            Yes
+Change Data Feed	            No	                                    Yes

@@ -65,6 +65,21 @@ Hence compute cost will increase. Instead of this if we use weekly job to move m
 here we will select small size cluster and writing into a single file will be done in 5 minutes. hence we will save here 
 compute time.
 
+why small file problem occurs:
+Suppose the DataFrame contains 1 GB but has 1,000 Spark partitions:
+
+print(df.rdd.getNumPartitions())
+# 1000
+
+Average data per partition:
+1 GB ÷ 1,000 partitions ≈ 1 MB
+
+When it is written:
+df.write.format("delta").save("/data/sales")
+
+Spark can create approximately 1,000 files of around 1 MB each.
+
+Spark does this because partitions are processed independently and in parallel. Combining every task’s output into larger files during the same basic write would require additional data movement and coordination.
 
 ## compresion file size is unsplittable how do process it fast.
 even though compression format doesn't support to split into multiple files.
