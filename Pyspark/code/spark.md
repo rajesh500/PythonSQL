@@ -65,7 +65,7 @@ Hence compute cost will increase. Instead of this if we use weekly job to move m
 here we will select small size cluster and writing into a single file will be done in 5 minutes. hence we will save here 
 compute time.
 
-why small file problem occurs:
+## why small file problem occurs:
 Suppose the DataFrame contains 1 GB but has 1,000 Spark partitions:
 
 print(df.rdd.getNumPartitions())
@@ -161,33 +161,7 @@ or once data is read, repartition() it will no of cores  parallelism will be ach
 as well as writing will also be done in one core. 
 
 
-## Delta vs Delta live table
-🔹 Delta Table – The foundation
-A storage format powered by Delta Lake, giving you:
-✅ ACID transactions
-✅ Time travel for historical queries
-✅ Schema enforcement & evolution
-✅ Efficient upserts and deletes
 
-🔹 Delta Live Table – The orchestrator
-A managed ETL pipeline framework that:
-✅ Automates table creation & updates
-✅ Manages dependencies between tables
-✅ Ensures data quality with built-in expectations
-✅ Supports Medallion Architecture (Bronze → Silver → Gold)
-
-
-
-Delta live tables:
-it is a declarative ETL framework that simplifies building, managing, and monitoring reliable data pipelines.
-This pipeline itself handle data quality, error handling .....
-which means do the transformation not back end orchestration..
-
-delta live tables is available for only premium account.
-delta live table has three options during pipeline creation core, advance, premium 
-1. core is basic tranformation, no CDC
-2. CDC, no governance, data quality etc...
-3. premium has all the options.
 
 
 
@@ -398,10 +372,6 @@ The VACUUM command in PySpark is used to remove stale, unused data files.
 
 
 -----------------------------------------------------------------------------------------------------------------
-
-pyspark2   -- start in itversity lab
-
-
 Spark is processing  engine of big data.
 
 Mapreduce is also a process engine for Hadoop Frame, but we have disadvantage for this one that why spark is famous
@@ -2380,7 +2350,6 @@ It is also a serialization and RPC framework
 Excellent for schema evolution
 Ideal for write heavy data operations
 Excellent for entire row consumption and processing
-
 Partially split-ability 
 Most efficient to used in Kafka
 
