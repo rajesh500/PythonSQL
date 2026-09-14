@@ -232,7 +232,8 @@ if cluster crashes: Restart from checkpoint
 
 
 9. What if the file is 500 GB and cannot be split?
-I would use a distributed processing framework such as Databricks/Spark to read the file in partitions and leverage checkpointing. Copy Activity is primarily a data movement service and does not provide record-level recovery within a file.
+I would use a distributed processing framework such as Databricks/Spark to read the file in partitions and leverage checkpointing. 
+Copy Activity is primarily a data movement service and does not provide record-level recovery within a file.
 
 10. Copy Activity Slow
 
@@ -327,13 +328,15 @@ if table has 4 partition, 4 queries will read totally take 10 minutes.
 1. Tell me about a performance issue you faced in Copy Activity.
 
 Sample Answer:
-In one of my projects, we had an ADF Copy Activity that loaded approximately 300 million records daily from an on-premises SQL Server into ADLS. The pipeline was expected to finish within 1 hour, but suddenly the runtime increased from 45 minutes to nearly 3 hours, causing SLA violations.
+In one of my projects, we had an ADF Copy Activity that loaded approximately 300 million records daily from an on-premises SQL Server into ADLS. 
+The pipeline was expected to finish within 1 hour, but suddenly the runtime increased from 45 minutes to nearly 3 hours, causing SLA violations.
 
 Step 1: Understand the Issue
 I first verified whether the issue was isolated to a single run or occurring consistently. After reviewing the monitoring history, I found that multiple recent runs were experiencing similar delays.
 
 Step 2: Identify the Bottleneck
-I checked the Copy Activity metrics such as rows read, rows written, throughput, DIU usage, and execution duration. Throughput had dropped significantly compared to previous successful runs.
+I checked the Copy Activity metrics such as rows read, rows written, throughput, DIU usage, and execution duration. 
+Throughput had dropped significantly compared to previous successful runs.
 
 Step 3: Check Recent Changes
 I spoke with the source database team and found that the source table volume had increased significantly due to a new business process. The source query was now reading a much larger dataset.
@@ -663,27 +666,28 @@ SSMS: SQL Server Management Studio (this is IDE using this also we can migrate o
 
 Types of Databases in Azure:
 Azure Database Services – Purpose & Use Cases
-Service										Purpose										Typical Use Case
+Service							Purpose					                                 Typical Use Case
 Azure SQL Database				Fully managed SQL Server database					OLTP applications, ERP, CRM
-Azure SQL Database Hyperscale	Very large SQL databases (100 TB+)					Large SaaS applications, huge transactional systems
-Azure Database for PostgreSQL	Open-source relational database						Web apps, GIS, analytics applications
-Azure Database for MySQL		Open-source relational database						WordPress, e-commerce, web applications
+Azure SQL Database Hyperscale	                Very large SQL databases (100 TB+)					Large SaaS applications, huge transactional systems
+Azure Database for PostgreSQL	                Open-source relational database						Web apps, GIS, analytics applications
+Azure Database for MySQL		        Open-source relational database						WordPress, e-commerce, web applications
 Azure Cosmos DB					Globally distributed NoSQL database					IoT, gaming, real-time applications
 Azure HorizonDB					Distributed PostgreSQL at scale						Multi-tenant SaaS and distributed OLTP workloads
-Azure SQL Managed Instance		Lift-and-shift SQL Server migration					Existing SQL Server applications
-SQL Server on 					Full SQL Server control								Legacy applications requiring OS/database control
+Azure SQL Managed Instance		        Lift-and-shift SQL Server migration					Existing SQL Server applications
+SQL Server on 					Full SQL Server control							Legacy applications requiring OS/database control
 Azure Virtual Machines
-Azure DocumentDB				JSON document database								Legacy Cosmos DB references
-Oracle Database@Azure			Oracle workloads on Azure							Oracle ERP, Oracle financial systems
-Azure Managed Instance for 		Wide-column NoSQL database							Time-series, IoT, telecom systems
+Azure DocumentDB				JSON document database							Legacy Cosmos DB references
+Oracle Database@Azure			        Oracle workloads on Azure						Oracle ERP, Oracle financial systems
+Azure Managed Instance for 		        Wide-column NoSQL database						Time-series, IoT, telecom systems
 Apache Cassandra
-MongoDB Atlas on Azure			JSON document database								Mobile apps, product catalogs
-Azure Managed Redis				In-memory cache										Session storage, caching, low-latency reads
+MongoDB Atlas on Azure			        JSON document database							Mobile apps, product catalogs
+Azure Managed Redis				In-memory cache								Session storage, caching, low-latency reads
 
 
 
 Migration from on-premise to Azure cloud:
-When migrating data from On-Prem SQL Server to Azure, there are multiple approaches. The choice depends on data size, downtime requirements, frequency, and target system.
+When migrating data from On-Prem SQL Server to Azure, there are multiple approaches. 
+The choice depends on data size, downtime requirements, frequency, and target system.
 1. Azure data factory:   Most common 
 on-prem SQL server
 		|

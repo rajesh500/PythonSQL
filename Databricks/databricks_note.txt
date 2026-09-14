@@ -75,7 +75,7 @@ Later delta table are implemented to support the upsert.
 Delta table is a high-performance data storage format built on top of apache parquet files that enables ACID, data versioning(time travel),
 schema enforcement and streaming and batch integration.
 
-managed and external tables are type of delta tables.
+
 
 Delta table vs Delta live tables:?
 
@@ -173,20 +173,6 @@ Hence the connection established but username, password are visible in the code.
 
 
 
-Managed vs external tables:
-Managed:
-full managed by databricks (creation, deletion..)
-stored in databricks managed location
-delete both tables metadata and underlying data files from cloud
-Supports an UNDROP TABLE command for a short retention period (e.g., 7 days) to recover a dropped table and its data.
-
-External:
-databricks manages metadata, files need to be managed by user
-data resided in user defined external location (ADLS, S3)
-deletes metadata in databricks,  data files remains in external location.
-recovery from cloud storage manually.
-
-
 Temporary and permenant views:
 temporary view, if session/cluster ends view gone.  create temporary view emp_tmp_vw as select * from emp;
 permenant view: view exist after session/cluster ends.
@@ -204,12 +190,6 @@ directly insert into shallow table, it will not reflect into main table.
 
 version check:
 dev.bronze.emp@v01
-
-
-Delta tables merge and upserts:
-merge into dev.dronze.emp e using dev.dronze.emp_updates u on e.emp_d = u.emp_id when matched then update set e.salary = y.salary 
-when not matched then insert statement
-when not matched by source then delete; (when not matched by source then update statement).
 
 
 Z-ordering:
@@ -322,10 +302,7 @@ Volumes: external location need to be create in ADLS account
 volume is unity catalog objects accessing the data in non-tabular format.
 these are like images, files, libraries....
 
-managed volume:
-drop managed volume, files and metadata will be dropped.
-external volumn:
-only metadata, files still remain same in the location.
+
 
 
 dbutils.help():
@@ -974,7 +951,7 @@ Deep Clone only supports Delta tables. It does not support views.
 
 
 
-CDF: (Change Data Feed)
+CDF: (Change Data Feed): 
 CDF (Change Data Feed) in Databricks Delta Lake is a feature that records row-level changes (inserts, updates, and deletes) made to a Delta table. 
 Instead of reading the entire table every time, downstream processes can read only the changes since a specific version or timestamp.
 
@@ -1000,9 +977,11 @@ today data got inserted it will store in specific version1
 next day some inserted, deleted, and update it will store in specific version2
 Now query this table after version1 what all the changes happended on version2 this can be tracked using some specific metadata columns.
 
-_change_type
-_commit_version
+_change_type    (insert, update, delete)
+_commit_version (v1, v2, v3)
 _commit_timestamp
+update_preimage   before update 
+update_postimage  after update
 
 
 SELECT *
@@ -1020,6 +999,89 @@ CREATE TABLE cdf_control (
     table_name STRING,
     last_processed_version BIGINT
 );
+
+
+In the backend how data is pulled for CDF is
+same as delta transaction log created for every transaction.
+for every update and delete cdf file is also get created.
+
+In the delta transaction log file we have a cdc info as 
+{"cdc":{"path":"_change_data/cdc-00002.parquet"}}  what operation is done for CDF.
+
+When table_changes(table, 1, 3) is queried, first it read all the delta transaction log files
+00000000000000000001.json
+00000000000000000002.json
+00000000000000000003.json
+from their. it will know what cdf changes are happened in between these three versions.
+for insert it will read parquet files of that version, for update and delete it reads from cdf files for version 1 to 3.
+
+
+Example:
+if there are three delta transaction log file from which file it reads data.
+It depends on the version range passed to table_changes(). Databricks reads the Delta-log commits in that range and then reads the data/CDF files referenced by those commits.
+
+Assume the table has:
+
+_delta_log/
+├── 00000000000000000000.json   ← Create table
+├── 00000000000000000001.json   ← Insert
+├── 00000000000000000002.json   ← Update
+└── 00000000000000000003.json   ← Delete
+
+Query only version 2
+SELECT *
+FROM table_changes('customers', 2, 2);
+
+Databricks processes:
+00000000000000000002.json
+
+That log might contain:
+{"cdc":{"path":"_change_data/cdc-00002.parquet"}}
+
+Databricks then reads:
+_change_data/cdc-00002.parquet
+
+It does not need the version 1 and version 3 changes for this result.
+
+
+
+Query versions 1 through 3
+SELECT *
+FROM table_changes('customers', 1, 3);
+
+Databricks processes the relevant commits:
+00000000000000000001.json
+00000000000000000002.json
+00000000000000000003.json
+
+Suppose they contain:
+Version 1 log
+└── add: part-001.parquet
+
+Version 2 log
+└── cdc: _change_data/cdc-002.parquet
+
+Version 3 log
+└── cdc: _change_data/cdc-003.parquet
+
+Databricks reads:
+part-001.parquet                  ← inserted rows
+_change_data/cdc-002.parquet      ← updated rows
+_change_data/cdc-003.parquet      ← deleted rows
+
+
+Checkpoints for large history
+If the table has thousands of commits, Databricks can use Delta checkpoints to avoid replaying all JSON files from version 0:
+
+_delta_log/
+├── 00000000000000000010.checkpoint.parquet
+├── 00000000000000000011.json
+├── 00000000000000000012.json
+└── 00000000000000000013.json
+
+For a current snapshot, Delta starts with a relevant checkpoint and applies later JSON commits.
+For CDF, Databricks still processes the commits in the requested change range because each commit identifies its change files and operation.
+
 
 
 
@@ -1630,6 +1692,347 @@ With classic compute, the compute resources run inside the customer’s cloud ac
 
 serverless compute:
 With serverless compute, Databricks manages the underlying compute infrastructure.
+
+
+
+
+How time travel works in databricks:
+when we create a delta table a _delta_log/ 00000000000000000000.json
+with version as 0, this json file contains table creation version 0
+
+day1
+when we insert a data into table (Insert orders 101 and 102) a new _delta_log file will be created as 
+00000000000000000001.json
+and 
+part-A.parquet file with data id 101 and 102.
+
+Day2 new one record inserted 103 and 101 got update.
+parquet file is immutable, since it won't touch the part A file.
+for every update and delete operation a new parquet file will be rewrite with updated value and new values.
+
+00000000000000000002.json    --> has part-c created and part-A-new.parquet and part-A.parquet is removed.
+part-A-new.parquet file created with 
+101 shipped 
+102 new 
+part-c.Parquet
+103 new 
+
+
+part-A.parquet is still exist for versioning but it is not active is remain as remove updated internall by databricks.
+for only versioning version 1 it is point.
+for active version 2 is point.
+
+day3:
+only new records 104 and 105 came
+again a json file get created with V3 
+00000000000000000003.json. --> part-d.parquet created with id 104 and 105.
+part-d.parquet created.
+
+day4: 103 got update, 102 delete and 106 insert.
+part_A_new.parquet is updated as removed in the backend internally.
+part_a_new2.parquet created with 
+101 shipped
+part_c_new.parquet created with 
+103 shipped 
+part_e.parquet created 
+00000000000000000004.json as version 4 has all this information.
+
+If we query version2 it will go 00002.json delta_log file and parquet files part of this version.
+version2 means all the latest data(snapshot) at that point of time.
+
+
+Untill the retention period ends those parquet remove will exist and occupy space.
+once retention period ends files will be deleted and space created.
+
+
+for a record delete in the delta table it has two options
+if the deletion vector is enabled.
+deleted record will write into another delete_vector log and we query backed it check an id in the 
+vector log table or not. if any id exists except this id other data will be read.
+
+Later, OPTIMIZE or another rewrite operation can create a new Parquet file that physically excludes the deleted row.
+
+deletion vector disabled.
+new parquet file writes with out delete id and old parquet still exists but updated status as removed internally.
+
+
+checkpoint: for every few delta_log file a checkpoint get created with all the information.
+then after new version will be created.
+if we are version before the checkpoint it will get information from checkpoint _delta_log.json.
+
+Checkpoint 20
++ JSON 21
++ JSON 22
++ JSON 23
++ JSON 24
++ JSON 25
+
+It does not need to replay versions 0–19 because checkpoint 20 already contains the accumulated table state through version 20.
+
+if checkpoint exists:
+checkpoint version <= requested version
+requested version is 25 then  20 <= 25 
+hence starting 20 to 
+
+
+version can't be deleted, only restore it to previous.
+example:
+version1 1-100
+version2 101-200
+version3 201-300
+version4 1-200 file1.parquet, parquet2.
+version3 parquet files are inactive.
+
+
+
+
+managed location and external location:
+managed location is default unity catalog path.
+under this path managed location created for managed tables.
+If we directly created a table with out defining location then it is a managed location.
+Here also data stored in delta format only.
+for every run or transition a _delta_log get created under this a parquet file is get created for data.
+
+Since because of this unity catalog maintains metadata and files.
+if we drop location metadata and files get deleted.
+
+Managed volume means under unity catalog file structure form like this.
+catalog-managed-storage>/
+└── __unitystorage/
+    └── tables/
+        └── <generated-table-id>/
+            ├── part-00000-abc.snappy.parquet
+            ├── part-00001-def.snappy.parquet
+            └── _delta_log/
+                ├── 00000000000000000000.json
+                ├── 00000000000000000001.json
+                ├── 00000000000000000002.json
+                └── 00000000000000000010.checkpoint.parquet
+
+Managed table:
+full managed by databricks (creation, deletion..)
+stored in databricks managed location
+delete both tables metadata and underlying data files from cloud
+Supports an UNDROP TABLE command for a short retention period (e.g., 7 days) to recover a dropped table and its data.
+
+since managed table are control by unity catalog we can perform update, delete and maintenance commands 
+like vaccum, z-orderding.
+
+External location:
+data/files store in any of cloud service out of databrick, those file access over here.
+with same path of file an external location is get created here.
+
+Here we can access files with authentication.
+CREATE STORAGE CREDENTIAL customer_s3_credential
+WITH AWS_IAM_ROLE (
+    ROLE_ARN = 'arn:aws:iam::123456789012:role/databricks-customer-role'
+);
+
+define this name in the external location create command.
+
+external volume:
+under this location a sub folder is get created and inside of this subfolder we can view the files.
+
+example:
+s3://landing/orders
+s3://landing/customers
+
+for each of one file create a one external file.
+in the volume we can side the files.
+
+External table:
+external table is created on top of it.
+
+databricks manages metadata, files need to be managed by user
+data resided in user defined external location (ADLS, S3)
+deletes metadata in databricks,  data files remains in external location.
+recovery from cloud storage manually.
+
+In the external location if the files are the delta files then 
+update, delete, vaccum and z-ordering can be done.
+
+If the external location files are parquet or csv, update, delete, vaccum and z-ordering can't be done.
+need to rewrite for parquet, csv.
+
+If the external location is snowflake table and connection is established with lakehouse federation 
+we can just read the data.
+
+if we need to  update or delete then connect with spark connector or jdbc connector or snowflake connector.
+then update or delete commands can direclty run in the snowflake database.
+in order to run vaccum or z-ordering (maintenance) commands on the snowflake tables.
+export data into S3 and create as external table
+
+update or delete need to be done on the files then convert it into delta.
+
+No—you cannot run Databricks VACUUM, OPTIMIZE, or ZORDER directly on a Snowflake table accessed through Lakehouse Federation.
+
+If Snowflake data is copied to an external Delta table
+Suppose you copy the Snowflake data into S3 as a Delta table:
+
+snowflake_df.write \
+    .format("delta") \
+    .mode("overwrite") \
+    .save("s3://company-data/delta/customers/")
+
+Register it:
+
+CREATE TABLE main.sales.customers_external
+USING DELTA
+LOCATION 's3://company-data/delta/customers/';
+
+Now it is an external Delta table, not a Snowflake table. You can execute:
+
+OPTIMIZE main.sales.customers_external;
+
+OPTIMIZE main.sales.customers_external
+ZORDER BY (customer_id);
+
+VACUUM main.sales.customers_external
+RETAIN 168 HOURS;
+
+If the external location data is in delta format then only we can apply update, delete, vaccum, z-ordering.
+
+update, delete, vaccum, z-ordering is a delta table feature, if data is in databricks or outside of databricks 
+these feature still works.
+
+
+
+Delta tables merge and upserts:
+merge into dev.dronze.emp e using dev.dronze.emp_updates u on e.emp_d = u.emp_id when matched then update set e.salary = y.salary 
+when not matched then insert statement
+when not matched by source then delete; (when not matched by source then update statement).
+
+Use MERGE when you receive incremental data containing a mixture of new, updated, or deleted records 
+and must synchronize it with an existing Delta table.
+
+When to use MERGE
+Scenario	                                Should you use MERGE?	                  Reason
+New and changed records in one batch	        Yes	                        Inserts new keys and updates existing keys
+CDC data with insert/update/delete	            Yes	                        Applies different actions based on operation type
+SCD Type 1	                                    Yes	                        Overwrites current attributes
+SCD Type 2	                                    Yes	                        Expires old record and inserts new version
+Retry without creating duplicates	            Yes	                        Business-key matching makes the load idempotent
+Deduplicating against a target	                Yes	                        Inserts only keys that do not already exist
+
+
+Limitation:
+1. It may scan a large target table
+2. Updating a few rows can rewrite large files
+    Parquet files are immutable.
+    Suppose one Parquet file contains one million records:
+    part-001.parquet
+    You update one customer. Without deletion vectors, Delta may:
+
+    Logically remove part-001.parquet
+    Write replacement part-002.parquet
+    Therefore, changing one row could cause a much larger file rewrite.
+    Deletion vectors can reduce immediate file rewriting, but later maintenance may still be required
+
+3. Source duplicates can cause failure
+4. Frequent small merges create small files
+
+
+
+Pipeline failed halfway:
+If we are writing data into delta table, halfway pipeline failure data shouldn't get commited into delta table,
+because delta supports ACID properties. If any DB support ACID properties data load should get sucessful or fail.
+If half data write and fail at halfway then these half data reverted back.
+
+Let’s say I am processing 10,000 records and writing them to a Delta table. 
+The pipeline fails after approximately 5,000 records have been written.
+Spark may have successfully created three Parquet data files, and those files may be physically visible 
+in the target storage location. While writing the fourth Parquet file, the pipeline fails, so that file may be 
+incomplete or corrupted.
+However, the three completed Parquet files were only staged; they were not committed individually. 
+Because the overall Delta write failed, no new transaction was committed to the _delta_log.
+Since the Delta transaction log does not reference any of these newly created Parquet files,
+ none of the 5,000 records are visible when querying the Delta table. Readers continue to see the previous 
+ successfully committed table version.
+Therefore, even though some Parquet files may physically exist in storage, the entire Delta write is treated 
+as failed. The unreferenced Parquet files are orphan files and can later be removed by VACUUM, subject to the 
+configured retention period.
+
+delta table still points to previous version only.
+
+
+if the target is a parquet, pipeline failed at halfway few(3) of the parquet file created.
+during fourth one it failed, this file has corrupted data. since pipeline is failed no __success message or file created 
+in that path. still we can read the these parquet files.
+
+If we rerun the pipeline with append, it will process those 10000 records again. since few of the files already
+data will be duplicated.
+
+in order to fix this we need to rerun with overwrite option.
+implementation:
+write if else condition for write operation one for append other one for rerun.
+pass input parameter for the rerun, based on this input parameter pipeline will overwrite those data.
+
+If in case we want to implement halfway pipeline failure scenario.
+created a static partition for every thousand records and maintain a control table with static parititon information.
+process it in a loop.
+
+write a query on control table if status <> completed then pull those static partition id and take in a list.
+iterate over the loop and process it one by one. if in case in failure happend in the middle.
+since process static partitions already updated with completed status those won't pulled in the control table query.
+so rerun process only those failed parititon data.
+
+Since it process in series by each static partition, with in the partition data processed parallel.
+
+
+Here some time control table update is failed, if we rerun the process with append mode, data will be duplicated.
+to overcome this we need to write with overwrite mode.
+
+
+* if we read all *.csv files for over TB size, Spark will read the files in parallel, 
+but the complete 10 TB write is one large batch transaction. this will lead to fail the batch.
+
+
+** iterate file by file or static partition by static partition in a loop this is series execution.
+In order to achieve in parallel.
+
+Lookup activty --> query status <> completed.
+For each activity --> uncheck sequential and define batch count (this is parallel processing)
+                       default 20, max we can define 50.
+                       first start with 3 or 4. it means start processing 3 to 4 files parallelly.
+databricks notebook (take input from for each activity source, target path and control table update required id)
+                    handle read and write and update once completed.
+                    update in case of failure.
+                    use overwrite.
+
+retry will be handled in the lookup with condition <> completed, overwrite of file incase of any partial 
+loads(handle Idempotency).
+
+If target is delt use merge concept for handling idempotent instead of using overwrite.
+
+Deduplication	Remove repeated records from data
+Idempotency	Ensure rerunning the same operation does not change the final result or create duplicates.
+
+
+_metadata.file_path:
+_metadata.file_path is a hidden Databricks column that identifies the record come from which source file.
+This can be implemented during read data from source and write into target.
+
+ex:
+col("_metadata.file_path").alias("source_file_path")
+
+_metadata.file_path
+Complete source-file path
+_metadata.file_name	File name with extension
+_metadata.file_size	File size in bytes
+_metadata.file_modification_time	Last modification timestamp
+_metadata.file_block_start	Starting byte offset of the input block
+_metadata.file_block_length	Length of the input block
+
+
+
+
+
+
+
+
+
+
+
 
 
 

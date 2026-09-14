@@ -366,3 +366,121 @@ Time travel	                    No	                                    Yes
 Schema enforcement	            Limited	                            Yes
 Concurrent-write safety	            Limited	                            Yes
 Change Data Feed	            No	                                    Yes
+
+
+
+
+managed vs external volume:
+volume means file store here.
+unity catalog managed both managed volume and external volume.
+If a managed volume drops,  
+Unity Catalog metadata and eventually removes the underlying managed files according to the platform’s lifecycle behavior.
+
+external volume:
+only metadata will be delete, file remains in external location.
+because files are from another service example s3.
+
+
+Lakehouse federation:
+cross-join of data from two different source system we use lakehouse federation concept:
+one source system is databricks
+other one is Azure sql data, mysql, postgresql, redshift, snowflake, redshift etc....
+
+why because other source system has hugh data, copying or moving to databricks bit expensive. 
+Instead of moving data into databricks, keeping data in that source system and query it.
+
+
+Architecture:
+
+
+user application                                                 unity catalog
+                                                                        ^
+                                                                        |
+                                                                        |        
+databricks compute              connection object                 foriegn catalog
+      |           |                     |                               ^
+                                        |                               |
+SQL query         return results        |                               |
+      |                      ^          |                               |
+      |                      |          |                               |
+      |                      |                                          |
+      |------------------->External data base ----------------------------
+
+
+Connection object:
+A connection is a Unity Catalog securable object containing the information needed to connect to an external system.
+
+It includes:
+Database type
+Host
+Port
+Authentication configuration
+Connection options
+
+foriegn catalog:
+A foreign catalog represents the external database’s metadata inside Unity Catalog.
+
+
+When query submitted to databricks compute first it will check the connection in unity catalog and then permission 
+to access external database object.
+Once these two are good, now databricks will connect to external source system and execute the query there and 
+get the result back to databricks.
+
+These result can be used to join with delta tables.
+
+Example:
+SELECT
+    region,
+    SUM(amount) AS total_amount
+FROM sales_federated.dbo.orders
+WHERE order_date >= DATE '2026-01-01'
+GROUP BY region;
+
+The processing flow is:
+
+The user submits the SQL to Databricks compute.
+Unity Catalog resolves sales_federated.dbo.orders.
+Unity Catalog checks the user’s permissions.
+Databricks identifies the connection and external source.
+Supported filters, projections, and aggregations are pushed to the source.
+Azure SQL executes the pushed-down work.
+The source returns the result to Databricks.
+Databricks completes any remaining processing.
+The result is returned to the user.
+
+
+
+Delta sharing:
+Delta Sharing is an open protocol that allows an organization to securely share live data with another team or organization without copying the data and without sharing cloud-storage credentials.
+
+The recipient receives read-only access, while the provider continues to own and control the original data.
+
+Provider owns the data → creates a share → grants it to a recipient → recipient queries it using their own compute.
+
+How it happens means 
+databricks to databricks
+or
+databricks to open 
+here Authentication purpose credentials need to be shared.
+
+Example:
+Company A owns this table:
+production.sales.orders
+Company A wants to share it with Company B.
+
+Step 1: Create a share
+CREATE SHARE company_b_sales_share;
+
+Step 2: Add the table
+ALTER SHARE company_b_sales_share
+ADD TABLE production.sales.orders;
+
+Step 3: Create the recipient
+CREATE RECIPIENT company_b;
+
+Step 4: Grant access
+GRANT SELECT
+ON SHARE company_b_sales_share
+TO RECIPIENT company_b;
+
+Company B can now query the shared table using its own compute.

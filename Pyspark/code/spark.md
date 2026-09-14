@@ -86,7 +86,44 @@ even though compression format doesn't support to split into multiple files.
 if we define as repartition(10) after reading data into dataframes then 10 partitions will be created and process in 10 tasks. here also we can achieve parallelism.
 
 ## Lazy evalution
-save, collection untill these kind of operation is called transformation is delayed.
+Lazy evaluation means Spark does not immediately execute transformations when they are written. 
+Instead, it records them as a logical execution plan and waits until an action is called.
+
+lazy transformations:
+df.select(...)
+df.filter(...)
+df.withColumn(...)
+df.join(...)
+df.groupBy(...)
+df.drop(...)
+df.distinct()
+df.repartition(...)
+
+Actions trigger exection:
+df.show()
+df.count()
+df.collect()
+df.take(10)
+df.first()
+df.write.format("delta").save(...)
+
+why it is lazy?
+Spark uses lazy evaluation mainly so it can see the complete transformation pipeline before executing it. Once Spark sees the entire plan, it can optimize the work, combine operations, reduce data reads, and avoid unnecessary processing.
+
+Example:
+df1 = df.filter("amount > 1000")
+df2 = df1.select("region", "amount")
+df3 = df2.groupBy("region").sum("amount")
+
+Spark would potentially run three separate operations:
+Read full data → filter → write intermediate result
+Read intermediate result → select → write intermediate result
+Read intermediate result → group and aggregate
+
+it has to do three operation separately.
+
+
+
 
 pyspark architecture is master-slave architecture.
 has three main components.
@@ -1311,12 +1348,17 @@ https://blog.knoldus.com/understanding-the-working-of-spark-driver-and-executor/
 
 
 Sort merge vs broadcast join:
-https://medium.com/swlh/spark-joins-tuning-part-1-sort-merge-vs-broadcast-a98d82610cf0
+A Sort-Merge Join is used when both sides are large. Spark shuffles both datasets by the join key, sorts each resulting partition and merges matching records.
+
+Limitation: sort-merge joins scale to large datasets but incur network, sorting and possible disk-spill costs.
+
+broadcast join: A Broadcast Hash Join is appropriate when one table is small enough to fit in each executor’s memory. Spark broadcasts the small table, builds a local hash map and joins it with partitions of the large table, avoiding a shuffle of the large side
 
 If we are joining the data with small file and large file concept we will use broadcast join which is very fast and takes less time to process it.
 If we turn off the broadcast join and perform a left join the it will take more time to process it.
 Internally, sortmergejoin will perform the joining operation first sort the data and perform the merge operation (means joining the both data frames).
 Which will takes more time compared to broadcast join.
+
 
 
 Skew join:
@@ -1880,10 +1922,67 @@ https://dbmstutorials.com/pyspark/spark-read-write-dataframe-options.html
 
 
 Catalyst optimiser:
-https://www.databricks.com/glossary/catalyst-optimizer
-
 The catalyst optimizer applies optimizations during logical and physical planning stages. 
 It optimizes the query logically then generates a range of physical plans and selects the most efficient one based on a cost model.
+
+Catalyst Optimizer is Spark SQL’s query optimization framework. It converts SQL or DataFrame code into an optimized physical execution plan.
+
+It determines:
+
+What operations are required
+In what order they should run
+Which filters can be pushed down
+Which columns need to be read
+Which join strategy should be used
+How the final plan should be executed
+
+Catalyst decides the execution plan; Spark/Tungsten or Photon executes it.
+
+
+SQL or dataframe code
+        |
+unresolved logical plan
+        |
+analyzed logical plan
+        |
+optimized logical plan
+        |
+physical plan candidates
+        |
+selected physical plan
+        |
+Tungsten or photon execution.
+
+
+Example: query
+SELECT region, SUM(amount)
+FROM sales
+WHERE sale_date >= DATE '2026-01-01'
+GROUP BY region;
+
+unresolved logical plan:
+Unresolved” means Spark has not fully verified:
+Whether sales exists
+Whether the columns exist
+Which region column is intended
+Whether the data types are valid
+Which functions are being called
+
+
+analyzed logical plan:
+Catalyst applies optimization rules to the analyzed logical plan.
+Important optimizations include:
+Predicate pushdown
+Column pruning
+Constant folding
+Filter combination
+Boolean expression simplification
+Null propagation
+Removing unnecessary projections
+Eliminating redundant operations
+Reordering certain joins
+Simplifying expressions
+
 
 Adaptive query Execution:
 https://towardsdatascience.com/apache-spark-3-0-adaptive-query-execution-2359e87ae31f
@@ -3206,6 +3305,11 @@ Calling UDF from spark sql
 Select id, squaredwithpython(id) as is_suared from table.
 
 
+Built-in Functions vs UDFs in PySpark:
+PySpark built-in functions are understood and optimized by Spark’s Catalyst Optimizer. A Python UDF is mostly a black box to Spark and requires data to move between the JVM and Python processes.
+
+UDF simple takes input and return output, no context to the business logic.
+* in-built functions handle null values, were udf need to handle explicitly.
 
 
 2.How can you minimize data transfers when working with Spark?
