@@ -65,7 +65,7 @@ Hence compute cost will increase. Instead of this if we use weekly job to move m
 here we will select small size cluster and writing into a single file will be done in 5 minutes. hence we will save here 
 compute time.
 
-## why small file problem occurs:
+## why small file problem occurs: and ## how do you handle small file problem.
 Suppose the DataFrame contains 1 GB but has 1,000 Spark partitions:
 
 print(df.rdd.getNumPartitions())
@@ -78,8 +78,90 @@ When it is written:
 df.write.format("delta").save("/data/sales")
 
 Spark can create approximately 1,000 files of around 1 MB each.
+Spark does this because partitions are more to handle small volume of data.
 
-Spark does this because partitions are processed independently and in parallel. Combining every task’s output into larger files during the same basic write would require additional data movement and coordination.
+This could be solved by reducing partition size
+rdf = df.repartition(8)
+rdf.write().mode("overwrite").parquet("path")
+
+If the fize is bigger but has less number of partition then this could cause another problem.
+Ex:
+Data size       = 1 TB
+Spark partitions = 4
+
+Each partition processes approximately:
+1 TB ÷ 4 ≈ 256 GB
+
+Execution:
+Partition 1 → Task 1 → approximately 256 GB
+Partition 2 → Task 2 → approximately 256 GB
+Partition 3 → Task 3 → approximately 256 GB
+Partition 4 → Task 4 → approximately 256 GB
+
+Even if the cluster has 100 available cores, only four tasks can run:
+4 cores working
+96 cores idle
+
+Problems caused:
+Poor cluster utilization
+Very long-running tasks
+Huge output files
+Executor memory pressure
+Disk spilling
+Possible out-of-memory errors
+Expensive task retries
+Straggler tasks delaying the complete stage
+Reduced read and write parallelism
+
+If one 256 GB task fails near completion, Spark must retry that entire task
+
+increase partitions
+Use repartition():
+balanced_df = df.repartition(2048)
+balanced_df.write \
+    .format("parquet") \
+    .mode("overwrite") \
+    .save(target_path)
+
+Conceptually:
+1 TB ÷ 2,048 ≈ 512 MB per partition
+
+If the cluster size is small how come we can increase partitions?
+
+You can increase Spark partitions even when the cluster is small because partitions do not all run simultaneously. Spark processes them in multiple waves.
+
+Suppose the cluster has four available executor cores:
+Parallel task capacity = 4 tasks
+DataFrame partitions   = 100
+
+Spark executes:
+Wave 1  → partitions 1–4
+Wave 2  → partitions 5–8
+Wave 3  → partitions 9–12
+...
+Wave 25 → partitions 97–100
+
+Only four tasks run concurrently, but the DataFrame can still contain 100 partitions.
+
+Why increase partitions on a small cluster?
+Suppose you have 1 TB of data and only four partitions:
+1 TB ÷ 4 = approximately 256 GB per task
+
+Each task is extremely large and may experience:
+Out-of-memory errors
+Heavy disk spilling
+Long garbage collection
+Expensive retries
+Huge output files
+
+If you increase it to 2,048 partitions:
+1 TB ÷ 2,048 ≈ 512 MB per task
+
+The small cluster still runs only four tasks simultaneously, but each task processes a manageable amount:
+
+4 tasks at a time × many waves
+This improves stability but does not make the small cluster as fast as a large cluster.
+
 
 ## compresion file size is unsplittable how do process it fast.
 even though compression format doesn't support to split into multiple files.
@@ -1928,7 +2010,6 @@ It optimizes the query logically then generates a range of physical plans and se
 Catalyst Optimizer is Spark SQL’s query optimization framework. It converts SQL or DataFrame code into an optimized physical execution plan.
 
 It determines:
-
 What operations are required
 In what order they should run
 Which filters can be pushed down
@@ -1970,6 +2051,15 @@ Which functions are being called
 
 
 analyzed logical plan:
+Catalyst’s analyzer uses the catalog and schema information to resolve:
+Table names
+Column names
+Data types
+Functions
+Aliases
+References
+
+optimized logical plan:
 Catalyst applies optimization rules to the analyzed logical plan.
 Important optimizations include:
 Predicate pushdown
@@ -1982,6 +2072,45 @@ Removing unnecessary projections
 Eliminating redundant operations
 Reordering certain joins
 Simplifying expressions
+
+
+physical plan:
+After optimizing the logical plan, Catalyst creates possible physical plans.
+For a join:
+orders_df.join(customers_df, "customer_id")
+
+Potential strategies include:
+Broadcast Hash Join
+Sort-Merge Join
+Shuffle Hash Join
+Broadcast Nested Loop Join
+
+Catalyst evaluates applicable strategies based on:
+Join type and condition
+Table statistics
+Estimated table sizes
+Configuration
+Join hints
+Data-source capabilities
+
+
+selected physical plan:
+Catalyst selects a physical plan that it estimates will be efficient.
+If customers is small:
+Broadcast customers
+        ↓
+Broadcast Hash Join with orders
+
+If both tables are large:
+
+Shuffle both by customer_id
+        ↓
+Sort both sides
+        ↓
+Sort-Merge Join
+
+
+Finally execution of plan using engine.
 
 
 Adaptive query Execution:

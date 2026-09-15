@@ -763,7 +763,7 @@ e1.start_time < e2.end_time;
 
 
 count(*) vs column(column):
-count(*) vs count(1) both are same, counts null values
+count(*) vs count(1) both are same, count(*) counts  null values
 count(column) exclude null values, can be slower as it checks each value for null.
 
 

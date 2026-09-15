@@ -75,6 +75,177 @@ External table or volume
 ADLS Gen2 path
 
 
+Metastore:
+A metastore is a central repository that stores metadata about data objects.
+Metadata means “information about the data,” such as:
+Table name
+Column names and data types
+Table owner
+Storage location
+Table format
+Permissions
+Partition informationMetastore
+
+A metastore is the top-level repository that stores metadata and governance information about data objects.
+
+It stores information such as:
+Catalog, schema and table names
+Column names and data types
+Table format
+Storage location
+Owner
+Permissions
+Partition information
+Row filters and column masks
+References to external locations and storage credentials
+
+The metastore normally does not contain the actual table rows. 
+Actual data is stored in cloud storage such as ADLS, S3 or GCS.
+
+Metastore → Metadata, object definitions and permissions
+Cloud storage → Delta/Parquet data files
+
+Unity Catalog:
+Unity Catalog is Databricks’ centralized data and AI governance framework.
+
+A useful analogy is:
+Metastore = Library catalog containing information about books
+Unity Catalog = Complete library-management and security system
+
+The metastore knows:
+Which books exist
+Their authors
+Their shelf locations
+Their categories
+
+Unity Catalog governs:
+Who can enter the library
+Who can read a particular book
+Who can add or modify books
+Which portion of a book someone can see
+Who accessed a book
+How books and information are related
+
+
+Query execution flow
+Suppose a user executes:
+SELECT *
+FROM production.sales.customers;
+
+Conceptually, the process is:
+Databricks authenticates the user.
+The metastore resolves production.sales.customers.
+Unity Catalog evaluates the user’s privileges.
+It checks required permissions such as:
+USE CATALOG
+USE SCHEMA
+SELECT
+It applies applicable row filters and column masks.
+Databricks obtains the authorized data location.
+Spark or Photon builds and executes the query plan.
+The result is returned.
+Access and lineage information can be recorded.
+
+If the user lacks permission, the query is rejected before the data is returned.
+
+User submits query
+        ↓
+Authenticate user
+        ↓
+Resolve object metadata
+        ↓
+Check Unity Catalog permissions
+        ↓
+Apply row filters and column masks
+        ↓
+Spark/Photon executes the query
+        ↓
+Return permitted results
+
+Object hierarchy:
+Unity Catalog
+    └── Metastore
+          └── Catalog
+                └── Schema
+                      ├── Table
+                      ├── View
+                      ├── Function
+                      ├── Volume
+                      └── Model
+
+Example:
+
+production.sales.customers
+     │       │       │
+  Catalog  Schema   Table
+Catalog and schema names
+
+
+unity catalog provides these features:
+Centralized access control
+Data discovery
+Data lineage
+Auditing
+Row-level security
+Column-level security
+Data masking
+Governance across multiple workspaces
+Governance for tables, files, volumes, functions and AI models
+
+
+My understanding purpose:
+unity catalog: it is centralized data governance framework.
+which means think of metastore has library. 
+library contains books, shelf, authors...
+
+catalogy is library management system which means who is reading books, does he have a permission or not,
+does he have membership or not, tracking books, administration.
+
+Here unity catalog will also do the same thing.
+When a person queries all the metadata is available in the metastore.
+now unity catalog or catalog take a query and check this user exists or not, does he has permission or not, 
+table exists or not, any row filter or masking need to apply, etc....
+
+schema has the table, view, functions etc...
+table store the data.
+
+Once unity catalog check all these query will get execute and results will be returned.
+If the user doesn't have the permission query will get rejected.
+
+
+query without metastore:
+Query flow without a metastore
+
+For direct file access:
+
+SELECT from storage path
+          ↓
+Spark receives file format and location
+          ↓
+Storage credentials provide access
+          ↓
+Spark reads Delta log or Parquet metadata
+          ↓
+Spark builds and executes the query plan
+          ↓
+Results returned
+
+Main point:
+Without any metastore, you cannot query a permanent table by a registered name such as production.sales.orders, 
+because Spark cannot resolve that name. But you can query files directly by path or create temporary DataFrames/views.
+
+without unity catalog:
+Without Unity Catalog, Databricks can still execute queries using the legacy workspace-level Hive Metastore or 
+by reading files directly from cloud storage. The Hive Metastore resolves the table schema, format and location, 
+while Spark or Photon executes the query. Storage access typically depends on credentials assigned to the cluster 
+or cloud IAM. However, centralized multi-workspace governance, account-level permissions, governed storage access, 
+centralized lineage, auditing, row filtering and column masking are limited or unavailable.
+ Unity Catalog is not required for Spark processing, but it provides centralized and fine-grained governance 
+ around that processing
+
+
+
+
 what is the use of unity catalog in databricks before catalog how it worked and what issues does unity catalog solved.
 What is Unity Catalog?
 

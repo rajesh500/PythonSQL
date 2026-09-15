@@ -51,11 +51,6 @@ ex: finance, sales, hr..
 df/b catalog and schema:
 finance is the catalog, with in this catalog a schema will be created.
 
-
-security in catalog:
-RABC, row-level security, column-level security, data masking ....
-
-
  
 Lakehouse architecture:  Combination of Dataware house and data lake architecture is called lakehouse.  Both can be done in databricks.
 Dataware house architecture:
@@ -2002,7 +1997,7 @@ databricks notebook (take input from for each activity source, target path and c
 retry will be handled in the lookup with condition <> completed, overwrite of file incase of any partial 
 loads(handle Idempotency).
 
-If target is delt use merge concept for handling idempotent instead of using overwrite.
+If target is delta use merge concept for handling idempotent instead of using overwrite.
 
 Deduplication	Remove repeated records from data
 Idempotency	Ensure rerunning the same operation does not change the final result or create duplicates.
@@ -2022,6 +2017,287 @@ _metadata.file_size	File size in bytes
 _metadata.file_modification_time	Last modification timestamp
 _metadata.file_block_start	Starting byte offset of the input block
 _metadata.file_block_length	Length of the input block
+
+
+
+## how do you handle small file problem:
+during writing define no of partition 
+rdf = df.repartition(8)
+rdf.write().mode("overwrite").parquet("path")
+
+data will write into 8 partitions.
+
+If in case we can't do this and it has to be done by a maintance command using optimize (file compaction).
+
+df.repartition() controls files before writing new data.
+
+OPTIMIZE compacts small files already existing in a Delta table.
+Frequent incremental/streaming writes accumulate files Auto-compaction + scheduled OPTIMIZE
+
+
+
+Scenario	                                                    Best choice
+DataFrame currently has too many partitions	                repartition() or coalesce()
+New write would create thousands of small files	            repartition() before writing
+Delta table already contains many small files	            OPTIMIZE
+Frequent incremental/streaming writes accumulate files	    Auto-compaction + scheduled OPTIMIZE
+Need better file organization/data skipping	                OPTIMIZE with clustering/Z-order
+Plain Parquet files, not Delta	                            repartition(); SQL OPTIMIZE is unavailable
+
+
+
+## why small file problem is an issue:
+Suppose you have 1 TB of data:
+Option A: 1,024 files × 1 GB
+Option B: 1,000,000 files × approximately 1 MB
+
+Both contain roughly the same data, but Option B is significantly slower.
+
+1. File-listing overhead
+Before processing, the Spark driver must discover and collect metadata about the files:
+List file
+Read path
+Read size
+Read partition information
+Plan input tasks
+
+Listing hundreds of thousands of files in ADLS or S3 can make query planning slow and consume driver memory.
+
+2. Storage open/close overhead
+Every file requires operations such as:
+Open connection → Read metadata/footer → Read data → Close connection
+For a 1 MB file, Spark may spend more time opening and closing it than reading its contents.
+
+3. Excessive task-scheduling overhead.
+    1 partition = 1 task
+the execution of task,  driver must manage every task:
+
+Create the task.
+Serialize task information.
+Send it to an executor.
+Track its execution.
+Receive status and metrics.
+Handle failures and retries.
+Mark it completed.
+
+That work is task-scheduling overhead.
+
+This create long job planning time.
+Slow stage startup.
+Long job-planning time.
+Large driver memory usage.
+Short executor tasks.
+Idle gaps between tasks.
+Large Spark event logs.
+Slow Spark UI rendering.
+Increased retry-management overhead.
+
+4. Parquet footer overhead
+Every Parquet file has its own footer containing schema and metadata:
+file_001.parquet → footer
+file_002.parquet → footer
+file_003.parquet → footer
+
+Spark may need to read metadata from many separate files before or during processing.
+
+5. Poor cluster utilization
+Executors repeatedly open small files and complete tiny tasks instead of spending most of their time processing data.
+A Spark UI symptom could look like:
+Number of tasks: 100,000
+Task duration:    100–500 milliseconds
+Actual compute:   very low
+Scheduling time:  very high
+
+Finally, poor performance and some time pipeline can be failed.
+
+solution:
+if target is delta using optimize.
+during write, write into few parition using repartition.
+use auto loader.
+
+
+If partitions are less to handle more volume of data, this can be handle by waves in the spark.
+
+no of partitions / total core = waves 
+200/8 = 25 waves.
+
+
+
+Region-based access to the data:
+In databricks it can be done in two ways
+1. create a function, this function checks the user belong to which group and attach this function to table as a 
+row filter.
+
+   ALTER TABLE production.sales.orders
+    SET ROW FILTER production.sales.region_filter
+    ON (region);     
+
+If this user login and he able to see only assign region data.
+region assign is done in the function as 
+is_account_group_member('us_analysts') AND region = 'US'
+
+
+2. create a view from select query in the select query in where clause
+write a where condition.
+
+SELECT *
+FROM production.sales.orders
+WHERE
+       current_user() = 'rajeshjkv5@gmail.com'
+    OR (is_account_group_member('us_analysts') AND region = 'US')
+    OR (is_account_group_member('eu_analysts') AND region = 'EU')
+    OR (is_account_group_member('apac_analysts') AND region = 'APAC');
+
+
+
+security in catalog:
+RBAC, row-level security, column-level security, data masking ....
+RBAC: Role-based access control:
+It controls access based on the user’s role or group membership.
+
+on a table for a user has only select access, this is because his role/group has only select access.
+other user has modify access, his group has modify access.
+which is called RBAC.
+
+scenario:
+Example:
+the users from US region can see only US data, EU region can see only EU data.
+
+If we need to implement this we need to create a separate view for every region.
+create view us_region select * from table where region = 'US'
+create view us_region select * from table where region = 'EU'
+
+Multiple view has to be created. This is an issue create those many view is not an ideal sitution.
+
+
+Implement row-level filter:
+
+User need to add certain group and check is_account_group_member belong to which region.
+to check this create a function.
+This function checks user belongs which group.
+CREATE OR REPLACE FUNCTION production.sales.region_filter(row_region STRING)
+RETURNS BOOLEAN
+RETURN
+    current_user() = 'rajeshjkv5@gmail.com' OR
+    is_account_group_member('admins')
+    OR (is_account_group_member('us_analysts') AND upper(row_region) = 'US')
+    OR (is_account_group_member('eu_analysts') AND upper(row_region) = 'EU');
+
+Alter table add row filter.
+ALTER TABLE production.sales.orders
+SET ROW FILTER production.sales.region_filter
+ON (region);
+
+Now when we query this table, since table as row filter the user id pass to the function and the region code
+and apply as filter to table and filter this region data and show it the user.
+
+In this way one function and row filter at table would be fine but here also we have an issue.
+For every table we have to implement the same logic, function might be same but 
+alter to the table need to be done. this could be an issue again.
+
+In order to overcome this ABAC concept implemented.
+
+ABAC: Attribute based access control.
+Attribute means field, it means field based access control.
+
+ABAC means Attribute-Based Access Control. In Databricks Unity Catalog, 
+it uses governed tags and centralized policies to automatically apply row filters, column masks,
+ and supported privilege policies across tables.
+
+Here we can create function, policy and governed tag.
+function and policy created one time but just tag need to attached new table.
+
+tags:  at column level 
+ALTER TABLE prod.sales.orders
+SET TAGS ('security_scope' = 'regional');
+
+ALTER TABLE prod.sales.orders
+ALTER COLUMN region
+SET TAGS ('data_attribute' = 'region');
+
+governed tags:
+CREATE GOVERNED TAG security_scope VALUES ('regional');
+CREATE GOVERNED TAG data_attribute VALUES ('region');
+
+These two are one time creation for each activity.
+activity means, masking, region-based access....
+
+function as above.
+
+policy need to be created.
+CREATE OR REPLACE POLICY ssn_masking_policy
+ON SCHEMA production.sales
+COLUMN MASK production.sales.mask_ssn
+TO `account users`
+FOR TABLES
+MATCH COLUMNS
+    has_tag_value('pii', 'ssn') AS ssn_column
+ON COLUMN ssn_column;
+
+policy at schema level.
+
+Now masking and region based access provider on a table.
+If we want to impement masking or region base access on another table just attached the tags to the table.
+
+Governed tag at Databricks account level.
+ABAC policies are attached to Unity Catalog objects(catalog/schema/table scopes).
+tags at Specific catalog/schema/table/column
+
+policy are not at workspace level.
+if same catalog being used in Dev and SIT then same policy be tag to SIT tables.
+
+
+
+Three level-name space: (build blocks of unity catalog)
+catalog.schema.table/view/volume/function..
+
+metastore is top 
+catalog
+schema
+table/view/volume/function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
