@@ -919,3 +919,71 @@ The table’s existing rows are retained.
 
 
 
+
+
+in fabrics we can't use dbutils instead we need to use mssparkutils (same util is used in synapse)
+because fabric built on Apache spark not on custom databricks runtime.
+
+
+mssparkutils.notebook.exit() notebook from child will exist from child notebook and return response to parent notebook
+mssparkutils.notebook.run("nb_ingestion_log", 60, {"user_id": 999}). --> call and pass a value as parameter to another notebook.
+																		     user_id should be same in both child and parent notebooks.
+																		     using dictionary to pass the values.
+
+
+
+from notebookutils import mssparkutils
+
+
+A Fabric Lakehouse stores and manages metadata, but the metadata exists at different levels.
+Fabric Lakehouse
+├── Catalog metadata
+├── Delta transaction metadata
+└── Parquet file metadata
+
+
+Fabric maintains:
+Workspace name
+Lakehouse name
+Schema name
+Table name
+Table location
+Table type
+Permissions and ownership
+
+Delta table metadata:
+Each Delta table contains a _delta_log directory:
+Tables/
+└── silver/
+    └── yellow_trips/
+        ├── _delta_log/
+        └── part-00000-....parquet
+
+The _delta_log stores:
+Table schema
+Table properties
+Current and historical versions
+Active Parquet files
+Removed files
+Partition information
+Transaction history
+Protocol information
+
+
+Parquet metadata:
+Every Parquet data file contains metadata in its footer, including:
+Columns and datatypes
+Row groups
+Row count
+Minimum and maximum values
+Null counts
+Compression information
+
+
+
+catalog working in fabric:
+When a file is only loaded into the Fabric Files area, it is not registered as a table, 
+so no Lakehouse catalog metadata exists for it. If the data is registered as a Delta table,
+ metadata is maintained at the Lakehouse catalog, Delta transaction log and Parquet file levels. 
+ spark.catalog primarily reads the Lakehouse catalog metadata. When Spark reads the table, 
+ it then uses the Delta log and Parquet metadata to process the data.

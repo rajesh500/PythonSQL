@@ -134,7 +134,7 @@ FROM production.sales.customers;
 
 Conceptually, the process is:
 Databricks authenticates the user.
-The metastore resolves production.sales.customers.
+The metastore resolves production.sales.customers.  (get the metadata of table from metastore)
 Unity Catalog evaluates the user’s privileges.
 It checks required permissions such as:
 USE CATALOG
@@ -240,8 +240,8 @@ by reading files directly from cloud storage. The Hive Metastore resolves the ta
 while Spark or Photon executes the query. Storage access typically depends on credentials assigned to the cluster 
 or cloud IAM. However, centralized multi-workspace governance, account-level permissions, governed storage access, 
 centralized lineage, auditing, row filtering and column masking are limited or unavailable.
- Unity Catalog is not required for Spark processing, but it provides centralized and fine-grained governance 
- around that processing
+Unity Catalog is not required for Spark processing, but it provides centralized and fine-grained governance 
+around that processing
 
 
 

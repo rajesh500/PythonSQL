@@ -1632,6 +1632,9 @@ delta live table has three options during pipeline creation core, advance, premi
 3. premium has all the options.
 
 
+Admins:
+databricks account admin 
+workspace admin
 
 
 Databricks Workspace architecture:
@@ -1656,6 +1659,7 @@ Authentication and authorization
 Query planning and job coordination metadata
 Monitoring information
 Unity Catalog integration
+metadata 
 
 Compute Plane
 
@@ -2258,6 +2262,65 @@ table/view/volume/function
 
 
 
+** to access more than one region data, use or condition in the function.
+Instead of attaching multiple row-filter to one table, add all these conditions in a function and attach it.
+example: 
+a person has to view US region data and that person belong to sales department he has to view only sales data.
+To simply, person has to view sales department data for US region.
+
+is_account_group_member("us_analysts") and row_region = 'US' 
+and 
+is_account_group_member("sales_team") and row_department = 'Sales'
+return Boolean;  True/False 
+
+--> row_region and row_department are input parameters to the function.
+** row filter can be applied to only table, no view. Base table will filter the data and view will automatically get 
+   the data.
+
+
+Row-filter limitations:
+1. Only one row filter can be attached to a table
+2. Cannot apply a row filter directly to a view
+3. Time travel limitations: 
+   Time-travel queries are not supported while relevant row filters or column masks are active
+4. Clone limitations
+   Deep and shallow cloning have restrictions on tables with active row filters
+5. The policy protects access through the Unity Catalog table. 
+   It cannot protect someone who separately has direct cloud-storage access and reads the underlying files.
+
+
+Dynamic views:
+region based filter applied to a query, view created on top of it.
+when a user query this view, if that person belong to  eu_analysts can see only EU data.
+similary for US.
+
+region base data filter and view only those region data handled in views.
+
+Secure view: (security boundary)
+It is an internal security feature in the databricks, it is not visible or can be directly queried.
+When a row filter attached to a table it filter out the data securly and show only appropriate data to the user.
+
+which means you simply query a table with amount > 100;
+databricks will check the  amount greater data exists in the US data as well as EU data with out secure.
+
+without secure view it will first filter the data greater than 100 and then apply the region filter.
+Here user doesn't have access to EU data, but still this data got touch.
+using secure view feature it will first filter the US data and then apply the amount > 100 condition.
+This way data is secured. This feature is also called protection against a side-channel leak.
+
+Entitlement tables:
+For region-based data access, we create a row-filter function that checks the user’s group membership against 
+the region value in each row. If the user is authorized to access that region, the function returns TRUE; 
+otherwise, it returns FALSE. We then attach this function to the table as a row filter.
+In the basic approach, the group names and corresponding regions are hard-coded inside the function. 
+To avoid hard-coding, we can create an entitlement table containing the group-to-region mappings.
+
+
+The entitlement table can be used in two ways:
+1. Join it with the main table through a dynamic view and return only the matching regional data.
+2. Reference it inside the row-filter function using an EXISTS condition. The function checks whether the current user belongs to a group mapped to the row’s region and returns a Boolean value.
+
+This makes the security rules data-driven and allows us to add or remove group-to-region mappings without modifying the function.
 
 
 
@@ -2290,6 +2353,204 @@ table/view/volume/function
 
 
 
+1. Identity management
+Databricks users.    --> user enter into databrick account using microsoft entra ID using SCIM (system for cross-domain identity management).
+                         SCIM automatically synchronizes identities from an Identity Provider, such as Microsoft Entra ID, into Databricks (user, user belong to group membership). Databricks Admin will take for next steps authentication(SSO) to databricks, workspace assign
+                         Workspace admin manage notebook, cluster, folder, workspace level access, SQL warehouse, git.....
+
+Account-level groups     --> create groups at account level, this group can be used at dev, test and prod level. (Groups like DE, DA, DS, BA, SIT...)
+Workspace-local versus account groups. --> In a databricks account multiple workspaces can be created but groups are at databricks account level can be used in         
+                                            multiple workspace.
+Service principals      --> used to connect databricks account to ADLS account
+Microsoft Entra ID      --> Microsoft Entra ID is Microsoft’s cloud-based identity and access-management service. (manages Employees and other users, User groups, 
+                            Applications, Service principals, Sign-in credentials, Multi-factor authentication, Organizational roles)
+SCIM provisioning       --> SCIM (system for cross-domain identity management).
+                           SCIM automatically synchronizes identities from an Identity Provider, such as Microsoft Entra ID, into Databricks
+Group membership        --> group means first a group will get created then a single or multiple permissions will be assigned to this group. If a new user going that 
+                            use  user will be added to group. so this group permissions will be inherited   
+
+2. Unity Catalog architecture. -- done 
+Metastore 
+Catalog
+Schema
+Table and view
+Function
+Volume
+Storage credential
+External location
+Managed versus external tables
+
+3. Unity Catalog permissions
+USE CATALOG
+USE SCHEMA
+SELECT
+MODIFY
+CREATE TABLE
+CREATE FUNCTION
+EXECUTE
+MANAGE
+Ownership                   --> an object has the owner, owner has the all privilege (like grant privilege, transfer ownership, drop the object, select, modify...)
+Privilege inheritance       --> select, modify, execute... these are privileges
+GRANT and REVOKE
+SHOW GRANTS
+
+4. Identity functions
+current_user()
+is_account_group_member()
+User versus group-based policies --> permission directly granted to the user, group-based policies means assign permissions to the group and inhert it to users
+Service-principal identities            
+
+5. Row-level security
+SQL row-filter UDF
+ALTER TABLE SET ROW FILTER
+Group-based filtering
+Region-based filtering
+Default-deny behavior
+Multiple-region access
+Row-filter limitations   --> attach only one filter to table, can't attach multiple row_filter functions to a table.
+                             example: user need to view sales data for US region. Don't create a separate function for sales data and us region.
+                             Handle both in one function is_account_group_member("us_analysts") and row_region = 'US' and  
+                             is_account_group_member("sales_team") and row_department = 'Sales' this one attach to table.
+Row-filter performance  
+
+6. Column-level security
+Column masks
+PII masking
+Email, SSN and phone masking
+Conditional masking by group
+Row filters versus column masks
+
+Example:
+
+CREATE FUNCTION prod.security.mask_email(email STRING)
+RETURNS STRING
+RETURN CASE
+    WHEN is_account_group_member('pii_readers')
+        THEN email
+    ELSE '***MASKED***'
+END;
+
+7. Dynamic views  --> view level region base data can view
+Secure reviews    --> interal databricks feature to protect the data from unauthorized access data
+View-owner versus querying-user behavior
+Filtering by group  --> Databricks checks the current user’s group membership and returns only the rows permitted for that group.
+Joining entitlement tables  --> remove hard code value, keep data in a table and use it were ever it required.
+Preventing base-table access -->  give access to view not the main table.
+Curated data products
+
+8. Attribute-based access control
+ABAC
+Governed tags
+Table and column tags
+Catalog/schema-level policies
+Policy TO and EXCEPT
+Centralized policy administration
+Row-filter policies
+Column-mask policies
+Policy limitations and compute requirements
+
+9. Entitlement/mapping tables
+For more complex access:
+
+principal	allowed_region
+user1@company.com	US
+user1@company.com	CANADA
+user2@company.com	EU
+
+Study:
+
+User-to-region mapping
+Group-to-region mapping
+Many-to-many entitlements
+Effective dates
+Approval workflow
+Access expiration
+Mapping-table performance
+
+Dynamic views are often easier when entitlement-table joins are required.
+
+10. Compute security
+Standard access mode
+Dedicated access mode
+Serverless SQL warehouses
+Fine-grained access controls
+Runtime compatibility
+Policy behavior through notebooks and jobs
+
+11. Storage security
+ADLS RBAC
+ACLs
+Managed identities
+Service principals
+Storage credentials
+External locations
+Avoiding direct-path access
+
+Users should access secured tables through Unity Catalog. Giving them direct ADLS access can bypass table-level governance controls.
+
+12. Auditing and monitoring
+Unity Catalog system tables
+Audit logs
+Query history
+Permission-change history
+Who accessed which table
+Failed-access attempts
+Periodic access reviews
+
+13. Performance
+Simple SQL filter functions
+Predicate pushdown
+Partition pruning
+Data skipping
+Liquid clustering
+Avoiding complex Python UDFs
+Entitlement-table join cost
+Query profiling
+
+14. Deployment and governance
+Dev/test/prod catalogs
+Terraform grants
+Policy deployment
+Service-principal ownership
+Separation of duties
+Naming standards
+Automated security testing
+Least-privilege access
+
+A concise interview answer would be:
+
+I implement region-based table security in Databricks using Unity Catalog row filters. Users receive the normal USE CATALOG, USE SCHEMA, and SELECT privileges, while a SQL UDF evaluates is_account_group_member() against the row’s region. For a single table, I attach the UDF using SET ROW FILTER. For curated datasets, I use dynamic views, and for centrally applying consistent policies across many tagged tables, I use Unity Catalog ABAC.
+
+
+
+Task 0:
+When reading formats like Delta or Parquet, Task 0 may only be reading the Delta Log metadata or the 
+footer of a Parquet file to infer the table's:
+
+default:
+spark split the parquet file data into groups/file splits and then process it.
+it won't split the data based on a column.
+
+If we want to do it df.repartition(8, column_id). Based on this column data split into 8 partitions.
+
+
+spark job hierarchy:
+df.count() is an action. When this line is executed, Spark creates a job containing one or more stages. Each stage contains multiple tasks, 
+and each task processes one data partition.
+df.count() — Action
+    ↓
+Spark Job
+    ↓
+One or more Stages
+    ↓
+Each Stage has multiple Tasks
+    ↓
+Each Task processes one Spark Partition
+
+
+Action → Spark job. --> at each action, spark creates one job.
+Shuffle → New stage inside that job
+Input partition → Task inside the stage
 
 
 
@@ -2298,6 +2559,132 @@ table/view/volume/function
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------- azure devops 
+if we committed a databricks notebook with ipybn file you can view the code in the json format
+along with code you will see other information as json format.
+
+.py file you can view the code as is in the notebook.
+
+
+
+CLI: (databricks CLI) 
+You should use the Databricks CLI primarily because it allows you to automate workspace management and resource configuration directly from your local terminal or CI/CD pipelines. Instead of relying on manual clicks in the web user interface (UI), the CLI wraps the full power of the Databricks REST API into easy-to-run terminal commands.
+
+to authenticate databricks CLI below are two ways.
+Ex: create a schema, 
+authentication:
+U2M (user to machine)
+M2M (machine to machine)
+
+
+
+task, job, workflow, pipeline:
+A notebook becomes a task when it is configured to run inside a Databricks job.
+A job can contain one task or multiple tasks.
+The execution order and dependencies among tasks form the workflow.
+The complete movement and transformation of data from source to destination is a data pipeline.
+
+
+
+
+
+Databricks Asset Bundle (DAB):
+DAB helps you move your Databricks notebooks, jobs, schedules, and configurations from Dev to QA or Production automatically instead of recreating them manually.
+Define all the information in the databricks.yml file.
+
+We define our Databricks application—including notebooks, jobs, pipelines, task dependencies, job-cluster configurations, parameters, schedules and permissions—in YAML. The same definitions can then be deployed consistently to Dev, QA and Production without manually recreating those declared resources in each workspace.
+
+
+Terraform creates and manages infrastructure.
+Databricks Bundle YAML deploys the Databricks application into that infrastructure.
+
+Terraform can also create:
+Databricks clusters
+Jobs
+Notebooks
+Permissions
+Catalogs
+Schemas
+
+but define these at yml level.
+
+Azure Pipeline YAML orchestrates both deployment processes. (terraform and yml file of dabs).
+
+Azure devops repository will push the code, it include .py file with yml file as well.
+
+Ex:
+mobility-project/
+│
+├── src/
+│   └── bronze_ingest.py
+│
+├── databricks.yml
+│
+└── azure-pipelines.yml
+
+
+Azure Pipeline YAML contains terrafrom info and databricks.yml file info.
+This file tells Azure DevOps:
+1. Download the code from the repository.
+2. Validate databricks.yml.
+3. Deploy the project using the QA configuration.
+
+deployment will be done using databricks CLI commands or azure devops pipeline.
+
+
+
+
+Git stores the code.
+DAB explains what to deploy.
+Azure DevOps starts the deployment.
+Databricks receives the deployment.
+
+
+
+Connect Databricks account to Devops:
+In databricks --> settings --> linked accounts --> add your git repo token.
+In devops create a repo, in the clone you will see a token paste in the above linked account so
+databricks to devops connection established.
+
+
+Devops pipeline need permission to publish code in the QA workspace.
+databricks of workspace qa generate a token from developer and place in devops library with name  
+name: QA_DATABRICKS_TOKEN 
+value: generate token
+
+give a name for variable group name and place this in the databricks. Finally devops has the permission to publish the cocde into QA workspace.
+
+
+Deployment of code from Dev to QA, can be done in multiple ways.
+1. Devops + DABS   --> recommanded way
+2. Github action + DABS
+3. Databricks Rest api's
+4. devops + databricks CLI
+...
+
+
+Once code deployed to QA code is available in the shared folder.
 
 
 

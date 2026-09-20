@@ -995,11 +995,16 @@ Pay per action (step in workflow)
 
 
 Event GRID:
-Azure Event Grid is an event routing service used to react to events such as file uploads, resource changes, or custom application events. It is commonly used to trigger Azure Functions, Logic Apps, or ADF pipelines. Event Grid is used for event notifications.
+Azure Event Grid is an event routing service used to react to events such as file uploads, 
+resource changes, or custom application events. 
+It is commonly used to trigger Azure Functions, Logic Apps, or ADF pipelines. 
+Event Grid is used for event notifications.
 
 
 Event Hub:
-Azure Event Hubs is a highly scalable event streaming platform designed to ingest and process millions of events per second. whereas Event Hub is used for high-throughput real-time streaming and analytics workloads.
+Azure Event Hubs is a highly scalable event streaming platform designed to ingest and process 
+millions of events per second.
+ whereas Event Hub is used for high-throughput real-time streaming and analytics workloads.
 
 
 

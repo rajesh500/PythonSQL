@@ -1458,7 +1458,7 @@ SQL Context,
 Streaming Context,
 Hive Context is not available in spark context, need to create separate context for these.
 
-The SparkContext is used by the Driver Process of the Spark Application in order to NNN a cKJ   ommunication with the cluster and the resource managers in order to coordinate and execute jobs.
+The SparkContext is used by the Driver Process of the Spark Application in order to communication with the cluster and the resource managers in order to coordinate and execute jobs.
 
 
 
@@ -2346,12 +2346,42 @@ Solution: make sure these partitions are appropriate
 
 Spark context vs Spark Session:
 Spark context and spark session both are same, both are the entry point of spark programming, in spark 1.0 version we need explicitly create the context but in spark 2.0 version spark session
-Includes the all the context. 
 
-Its object sc is default available in spark-shell and it can be programmatically created using SparkContext class.
+SparkContext represents the connection between your application and the Spark cluster.
+It is responsible for:
+Connecting to the cluster.
+Requesting CPU and memory resources.
+Creating and working with RDDs.
+Coordinating work between the driver and executors.
+Managing low-level Spark execution.
 
-It’s object spark is default available in spark-shell and it can be created programmatically using SparkSession builder pattern.
 
+SparkSession is the main entry point used to work with DataFrames, Spark SQL, tables, and files.
+All the context are included here.
+
+
+Intitially when the spark launch it doesn't support to query in SQL, HQL, dataframe format.
+spark supports only RDD's.
+In order to write the query in SQL format we have import SQL context and write the SQL.
+To read Hive table need to import HiveContext, similary for StreamingContext.
+
+Problem with separate contexts:
+Suppose you wanted to
+Create an RDD.
+Convert it to a DataFrame.
+Run SQL.
+Read a Hive table.
+
+You had to move between several objects:
+rdd = sc.parallelize(data)
+df = sql_context.createDataFrame(rdd)
+hive_context.sql("SELECT * FROM sales")
+
+Each time you need a separate context, this make confusion for the developer.
+Spark2.0 included all the context, which are available in the backend but all these can be done in sparksession
+no need to import or include each context separately
+
+StreamingContext was not completely included in SparkSession. Modern Structured Streaming uses SparkSession.
 
 
 
