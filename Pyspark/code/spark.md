@@ -215,12 +215,35 @@ has three main components.
 3. executor (slaves)
 
 
-Executor: 
+driver:
+Runs your PySpark code
+Creates the SparkSession
+Builds the logical and physical execution plan
+Converts actions into jobs
+Divides jobs into stages and tasks
+Schedules tasks on executors
+Tracks task progress and failures
+
+Cluster Manager:
+The Cluster Manager allocates compute resources for Spark.
+
+Executor:  Executors are worker processes running on worker nodes.
 job  --> triggered by action (count(), save()).
 stage --> stages 
 task  --> One task is created for each data partition and sent to an executor for processing
 
+Execute tasks
+Process partitions
+Store cached data
+Perform shuffle operations
+Report results and metrics to the driver
 
+Each executor has:
+
+Multiple CPU cores
+Execution memory
+Storage memory
+Temporary disk space
 
 ## AQE (Adaptive  Query Execution):
 Adaptive Query Execution (AQE) in Apache Spark 3.0+ is a dynamic optimization framework that re-optimizes query plans during runtime based on statistics from completed stages. By adjusting partition sizes, join strategies, and handling data skew on the fly, AQE significantly reduces manual tuning and improves performance. It is enabled by default in Spark 3.2.0 and later.
@@ -1397,7 +1420,20 @@ When driver programs main () method exits or when it call the stop () method of 
 
 
 
+Joins:
+Inner, left, right, full, semi, and anti joins are logical join types. They define what records should appear in the result.
+When the query executes, Spark converts the logical join into a physical join strategy that defines how the records are actually joined across executors.
+Common physical strategies are:
+- Sort-merge join
+- Broadcast hash join
+- Shuffled hash join
+- Broadcast nested-loop join
+These are internal algorithms selected by Spark’s Catalyst optimizer and possibly adjusted by Adaptive Query Execution.
 
+
+explicity telling query to use sort merge join:
+joined_df = (orders.hint("merge") .join(customers.hint("merge"), on="customer_id", how="inner" ) )
+SELECT /*+ MERGE(o, c) */ * FROM orders o JOIN customers c ON o.customer_id = c.customer_id;
 
 Broadcast Join:  or Broadcast hash join
 If one table is small and other table is large, broadcast join is the good for better performance.
@@ -1426,7 +1462,6 @@ spark: spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 10000000)   settin
 Enable sort merge join:
 spark.sql.config(spark.sql.join.preferSortMergeJoin). 
 working of spark driver and executor:
-https://blog.knoldus.com/understanding-the-working-of-spark-driver-and-executor/
 
 
 Sort merge vs broadcast join:
@@ -1446,6 +1481,8 @@ Which will takes more time compared to broadcast join.
 Skew join:
 Data skew can severely downgrade the performance of join queries. This feature dynamically handles skew in sort-merge join by splitting 
 (and replicating if needed) skewed tasks into roughly evenly sized tasks. It takes effect when both spark.sql.adaptive.enabled and spark.sql.adaptive.skewJoin.enabled configurations are enabled
+
+
 
 spark logical and physical plan:
 https://blog.knoldus.com/understanding-sparks-logical-and-physical-plan-in-laymans-term/
@@ -1681,6 +1718,8 @@ Spark Performance tuning:
 
 Data Serialization in spark:
 Serialization plays an important role in the performance for any distributed application. By default spark uses java serializer
+
+Spark serialization is the process of converting objects into a binary byte stream so they can be transmitted over the network or saved to disk. Because Apache Spark is a distributed computing framework, it constantly transfers data, functions, and closures between the driver node and worker nodes (executors) during operations like shuffling, caching, and task distribution.
 
 API selection:
 # Spark introduced three type of API to work upon RDD, DataFrame, DataSet
@@ -4243,3 +4282,651 @@ When an employee record is updated in a Databricks Delta table using Change Data
 Change Types Generated for Standard Updates 
 update_preimage: Contains the full row data of the employee record before the update was applied.
 update_postimage: Contains the full row data of the employee record after the update was applied.
+
+
+
+
+
+
+
+memory presure, memory spill, disk spill, OOM.
+An executor with 2 cores can generally process 2 tasks concurrently. In a Spark stage, each task processes one partition.
+
+For example, suppose an executor has:
+ 2 cores
+ 100 MB of execution memory available
+ 10 tasks (10 partitions)
+
+Since the executor has 2 cores, the tasks are processed in waves:
+Wave 1
+ Task 1 requires 20 MB
+ Task 2 requires 70 MB
+ Total memory required = 90 MB
+
+Wave 2
+ Task 3 requires 50 MB
+ Task 4 requires 40 MB
+ Total memory required = 90 MB
+
+Wave 3
+ Task 5 requires 70 MB
+ Task 6 requires 30 MB
+ Total memory required = 100 MB
+
+The important point is that the 100 MB execution-memory pool is shared by the tasks running concurrently.
+
+Spark does not divide the memory equally based on the number of cores. For example, it does not mean:
+100 MB / 2 cores = 50 MB per task.
+
+Instead, each task requests memory from the shared execution-memory pool based on the operation it is performing.
+
+For example, suppose:
+Wave 4
+
+ Task 7 requires 80 MB
+ Task 8 requires 60 MB
+ Combined requirement = 140 MB
+ Available execution memory = 100 MB
+
+Now the concurrent tasks are requesting more execution memory than is readily available. This creates memory pressure.
+
+If the operations support spilling, Spark can spill some intermediate data from memory to local disk, free execution memory, and continue processing.
+
+If Spark cannot free, evict, or spill enough memory to satisfy the memory request, the task or executor may eventually encounter an OutOfMemory (OOM) condition.
+
+Also, partition size is not the same as task memory requirement. A task can process a 500 MB partition without requiring 500 MB of RAM because Spark can process records incrementally. The amount of memory required depends on the operation being performed, such as filtering, aggregation, sorting, or joining.
+
+In summary:
+Executor cores → determine how many tasks can run concurrently.
+
+Task → processes one partition in a stage.
+
+Execution memory → shared among concurrently running tasks.
+
+Memory pressure → occurs when tasks request memory and available execution memory becomes constrained.
+
+Spill → Spark writes spillable intermediate data to local disk to free memory.
+
+OOM → can occur when Spark cannot free, evict, or spill enough memory to satisfy a memory request.
+
+
+
+
+
+
+
+Dataset
+   ↓
+Split into partitions
+   ↓
+One task processes one partition in a stage
+   ↓
+Executor runs multiple tasks depending on cores
+   ↓
+Tasks share executor memory
+   ↓
+Task/operator needs working memory
+   ↓
+Memory becomes constrained
+   ↓
+MEMORY PRESSURE
+   ↓
+Can Spark free/evict/spill enough?
+       /                  \
+     YES                   NO
+      ↓                     ↓
+Spill intermediate         OOM possible
+data structures
+      ↓
+300 MB estimated
+in-memory representation
+      ↓
+Memory Bytes Spilled
+= 300 MB
+      ↓
+Serialize
+      ↓
+100 MB written to
+temporary local disk
+      ↓
+Disk Bytes Spilled
+= 100 MB
+      ↓
+Memory freed
+      ↓
+Task continues
+      ↓
+May experience memory
+pressure again
+      ↓
+If Spark eventually cannot
+free/spill enough
+      ↓
+OOM
+
+
+Think about a kitchen
+This analogy usually makes it click.
+Your kitchen counter = executor memory.
+Your cupboards = disk.
+You're cooking a huge meal.
+
+If you have 20 plates but your counter holds only 5:
+
+Counter:
+Plate 1
+Plate 2
+Plate 3
+Plate 4
+Plate 5
+
+Counter full!
+Put finished plates in cupboard.
+↓
+Counter has space again.
+↓
+Continue cooking.
+
+
+But suppose you're preparing a single giant cake that requires the entire cake to stay on the counter while you're decorating it.
+
+The cake requires 15 feet of counter, but your counter is only 10 feet.
+
+You can't put half of the cake in the cupboard and continue decorating it as though it were still one working object.
+
+Need:     ███████████████ 15 GB
+
+Counter:  ██████████       10 GB
+                         ↑
+                    Not enough
+
+                         ↓
+                        OOM
+So when does each happen?
+
+
+| Situation                                                    | Result                     |
+| ------------------------------------------------------------ | -------------------------- |
+| Sort needs more execution memory                             | Spill to disk          |
+| Aggregation needs more execution memory                      | Often spill to disk    |
+| Shuffle processing needs more memory                         | Can spill to disk      |
+| Large non-spillable Java/Python objects consume heap         | OOM                    |
+| One task/partition requires too much non-spillable memory    | OOM                    |
+| Spark spills, but other memory usage still becomes excessive | Spill + eventually OOM |
+--------------------------------------------------------------------
+
+
+Common situations:
+Large groupBy, reduceByKey, or aggregations
+Large joins, especially sort-merge joins
+orderBy or global sorting
+Window functions
+distinct and dropDuplicates
+Large shuffles
+collect_list or collect_set
+Caching/persisting data when memory is insufficient
+
+
+we can't eliminate spill at any cost. A small amount of spill can be normal; excessive spill indicates that the workload or cluster needs tuning.
+To reduce disk spill:
+Increase executor memory or memory overhead
+Increase executor count
+Reduce data before joins or aggregations
+Use broadcast joins for small tables
+Repartition using a suitable key
+Avoid unnecessary groupByKey; prefer reduceByKey or aggregations
+Handle data skew and hot keys
+Avoid excessive collect_list
+Filter and select only required columns early
+Tune spark.sql.shuffle.partitions
+
+
+
+
+
+For example:
+spark.conf.set("spark.sql.shuffle.partitions", กล 400)
+
+The correct number depends on data size and cluster resources. Very low partitions create large tasks and more spilling; very high partitions create many small tasks and scheduling overhead.
+
+
+
+
+
+Let's put realistic example numbers into your complete flow so you can connect dataset → partitions → cores → tasks → execution memory → pressure → spill → OOM.
+
+Spark Memory Pressure, Spill, and OOM — Complete Example
+Example Configuration
+
+Suppose we have:
+Dataset size = 10 GB
+
+Spark divides the dataset into:
+
+10 partitions × 1 GB each
+
+Assume we have one executor:
+Executor configuration
+
+Executor cores = 2
+Executor heap memory = 1 GB
+Assume approximately 600 MB is available as execution/storage memory for this simplified example.
+
+Because the executor has 2 cores, it can run approximately 2 tasks concurrently.
+
+Each task processes one partition in the stage.
+
+10 GB Dataset
+      ↓
+10 Partitions
+
+P1 = 1 GB
+P2 = 1 GB
+P3 = 1 GB
+P4 = 1 GB
+...
+P10 = 1 GB
+
+There are 10 tasks for this stage:
+Task 1  → Partition 1
+Task 2  → Partition 2
+Task 3  → Partition 3
+...
+Task 10 → Partition 10
+
+Because the executor has 2 cores, tasks run in waves:
+Wave 1 → Task 1 + Task 2
+Wave 2 → Task 3 + Task 4
+Wave 3 → Task 5 + Task 6
+Wave 4 → Task 7 + Task 8
+Wave 5 → Task 9 + Task 10
+Wave 1 — Normal Processing
+
+Suppose:
+Available execution memory ≈ 600 MB
+
+Task 1 working memory = 150 MB
+Task 2 working memory = 200 MB
+
+Combined = 350 MB
+
+There is enough memory.
+
+             EXECUTOR
+       Execution Memory ≈ 600 MB
+
+          /             \
+         /               \
+Task 1 = 150 MB      Task 2 = 200 MB
+
+Total = 350 MB
+
+Available = 600 MB
+
+No major memory pressure
+No spill
+No OOM
+
+Notice something important:
+Each partition is 1 GB, but the tasks do NOT necessarily require 1 GB of memory.
+
+Partition size = 1 GB
+        ≠
+Task working memory = 1 GB
+
+The task may process records incrementally.
+
+Wave 2 — Memory Pressure
+
+Now suppose Task 3 and Task 4 are performing a large aggregation:
+
+df.groupBy("customer_id").sum("amount")
+
+Their intermediate aggregation structures grow.
+
+Suppose:
+Task 3 = 350 MB working memory
+Task 4 = 200 MB working memory
+
+Total = 550 MB
+
+Available execution memory ≈ 600 MB
+
+Now Task 3 needs another 150 MB.
+
+It cannot simply get all of that additional memory because the shared execution-memory pool is already heavily utilized.
+
+Current demand:
+
+Task 3 = 350 MB
+Task 4 = 200 MB
+----------------
+Total  = 550 MB
+
+Available ≈ 600 MB
+
+Task 3 requests another 150 MB
+              ↓
+Potential demand = 700 MB
+              ↓
+Available ≈ 600 MB
+              ↓
+MEMORY PRESSURE
+Spark Tries to Spill
+
+Because the aggregation uses spill-capable intermediate structures, Spark can attempt to free execution memory.
+
+Suppose Spark chooses intermediate structures whose estimated in-memory size is:
+
+300 MB
+
+This becomes:
+
+Memory Bytes Spilled = 300 MB
+
+Conceptually:
+
+Task 3 intermediate structures
+              ↓
+      Memory pressure
+              ↓
+Spark selects spillable data
+              ↓
+In-memory representation
+           300 MB
+              ↓
+Memory Bytes Spilled
+           300 MB
+
+Spark serializes this intermediate data before writing it to local disk.
+
+Suppose the serialized representation occupies:
+
+100 MB
+
+Then:
+
+300 MB in-memory representation
+              ↓
+         Serialization
+              ↓
+100 MB serialized representation
+              ↓
+      Local temporary disk
+
+Spark UI could therefore show:
+
+Memory Bytes Spilled = 300 MB
+
+Disk Bytes Spilled   = 100 MB
+
+These are two measurements of essentially the same spilled information, not 400 MB of total spilled data.
+
+Memory Is Freed and Processing Continues
+
+Before spilling:
+
+Execution memory ≈ 600 MB
+
+Task 3 → 350 MB
+Task 4 → 200 MB
+
+Used ≈ 550 MB
+
+After Spark frees some of the spilled in-memory structures, more execution memory becomes available.
+
+Conceptually:
+                    SPILL
+
+Memory                                    Disk
+
+300 MB in-memory
+representation
+      │
+      │ serialization
+      └──────────────────────────────→ 100 MB
+                                        spill file
+
+Memory Bytes Spilled = 300 MB
+Disk Bytes Spilled   = 100 MB
+
+The freed memory can now be reused.
+
+Memory freed
+      ↓
+Task gets additional memory
+      ↓
+Task continues processing
+Now Introduce Data Skew
+
+Suppose after a shuffle the partitions are no longer evenly sized.
+
+Instead of:
+
+P1 = 1 GB
+P2 = 1 GB
+P3 = 1 GB
+...
+
+we might get something like:
+
+P1 = 500 MB
+P2 = 600 MB
+P3 = 450 MB
+P4 = 4 GB    ← SKEWED PARTITION
+P5 = 550 MB
+...
+
+Suppose Task 7 receives the skewed partition.
+
+Task 7
+   ↓
+Partition 4
+   ↓
+4 GB
+
+Again, 4 GB partition does not automatically mean Task 7 needs 4 GB of RAM.
+
+But suppose the operation is a memory-intensive groupBy or join and its working state becomes very large.
+
+Task 7 working structures grow:
+
+200 MB
+   ↓
+300 MB
+   ↓
+400 MB
+   ↓
+500 MB
+   ↓
+Requests more memory
+
+At the same time Task 8 is also running because the executor has 2 cores.
+
+Executor execution memory ≈ 600 MB
+
+Task 7 → very high memory demand
+Task 8 → also requesting memory
+
+              ↓
+
+       MEMORY PRESSURE
+
+Spark starts spilling Task 7's spillable intermediate data.
+
+Memory pressure
+      ↓
+Spill
+      ↓
+Continue
+      ↓
+More intermediate data
+      ↓
+Memory pressure again
+      ↓
+Spill again
+      ↓
+Continue
+
+Therefore you might eventually see:
+
+Memory Bytes Spilled = 2 GB
+Disk Bytes Spilled   = 800 MB
+
+Even though the executor doesn't have 2 GB of execution memory.
+
+Why?
+
+Because the spill metric is cumulative over the task's processing.
+
+For example:
+
+Spill #1 → 300 MB memory representation
+Spill #2 → 400 MB
+Spill #3 → 500 MB
+Spill #4 → 800 MB
+-----------------------------
+Total Memory Bytes Spilled
+≈ 2 GB
+
+The executor never needed to hold that entire 2 GB simultaneously.
+
+When OOM Can Happen
+
+Now suppose the skewed task continues growing.
+
+4 GB skewed partition
+       ↓
+Task 7 performs large aggregation/join
+       ↓
+Working-memory requirement grows
+       ↓
+Memory pressure
+       ↓
+Spill
+       ↓
+Continue
+       ↓
+Memory pressure
+       ↓
+Spill
+       ↓
+Continue
+       ↓
+Task requests additional memory
+       ↓
+Spark cannot free/evict/spill
+enough memory
+       ↓
+OOM
+
+So spilling can happen several times before an OOM occurs.
+
+Complete Example
+                    10 GB DATASET
+                          |
+                          v
+                 Split into partitions
+                          |
+                          v
+              10 partitions × ~1 GB
+                          |
+                          v
+                10 tasks in the stage
+                          |
+                          v
+              Executor has 2 cores
+                          |
+                          v
+              2 tasks run concurrently
+                          |
+                          v
+              Shared execution memory
+                     ≈ 600 MB
+                          |
+             +------------+------------+
+             |                         |
+          Task 3                      Task 4
+          350 MB                      200 MB
+             |                         |
+             +------------+------------+
+                          |
+                     ≈ 550 MB
+                          |
+             Task requests more memory
+                          |
+                          v
+                  MEMORY PRESSURE
+                          |
+                          v
+             Can Spark free/evict/spill?
+                     /          \
+                   YES           NO
+                    |             |
+                    v             v
+            Spill intermediate   OOM
+                 structures
+                    |
+                    v
+         300 MB in-memory representation
+                    |
+                    v
+         Memory Bytes Spilled = 300 MB
+                    |
+                    v
+                 Serialize
+                    |
+                    v
+          100 MB temporary disk file
+                    |
+                    v
+          Disk Bytes Spilled = 100 MB
+                    |
+                    v
+               Memory freed
+                    |
+                    v
+              Task continues
+                    |
+                    v
+         More memory pressure later?
+                 /       \
+               NO         YES
+                |          |
+                v          v
+             Finish       Spill again
+                            |
+                            v
+                   Cannot eventually
+                   free/spill enough?
+                            |
+                            v
+                           OOM
+The key numbers to remember
+
+In this example:
+
+Dataset size: 10 GB
+Partitions: 10 × ~1 GB
+Executor: 1 GB heap, 2 cores
+Concurrent tasks: approximately 2
+Simplified execution/storage memory available: ~600 MB
+Task 3 working memory: 350 MB
+Task 4 working memory: 200 MB
+Combined: 550 MB
+Additional request: 150 MB
+Result: Memory pressure
+Selected in-memory data for spill: 300 MB
+Memory Bytes Spilled: 300 MB
+Serialized temporary disk data: 100 MB
+Disk Bytes Spilled: 100 MB
+
+The most important relationship is:
+
+Dataset size → partitions → tasks → executor cores determine concurrent tasks → concurrent tasks share executor execution memory → operators request working memory → memory pressure → spill if possible → OOM if Spark cannot free/spill enough memory.
+
+One caveat: the ~600 MB from a 1 GB executor is only a simplified teaching example. In real Spark, unified memory calculations, reserved memory, storage borrowing, memory overhead, and configuration settings affect the actual amount available.
+
+
+
+

@@ -319,10 +319,48 @@ use photon acceleration: databricks engine
 Databricks Photon is a high-performance, vectorized query engine developed by Databricks. 
 It accelerates SQL and DataFrame workloads running on Delta Lake and Parquet.
 
-In simple terms:
-Spark prepares the execution plan, while Photon executes supported parts of that plan faster using native vectorized code.
+You should choose the Databricks Photon engine over standard Apache Spark because it runs data workloads up to 5 times faster and reduces costs by replacing the Java Virtual Machine (JVM) with a native C++ engine.
 
+
+To see how Photon compares to standard Spark, let's look at a common scenario: calculating total sales from a massive table of transactions.Imagine you have a table with 100 million sales records, and you run this query to find the total revenue for a specific store:sql
+
+SELECT store_id, SUM(sale_amount) 
+FROM global_sales 
+WHERE store_id = 'Store_A'
+GROUP BY store_id;
+
+Use code with caution.Here is exactly how standard Spark and the Photon engine handle this query differently under the hood.
+
+1. Standard Spark Engine (The Row-by-Row Worker)Standard Spark is built on Java/Scala (JVM). When you run the query, it acts like a clerk processing a physical stack of papers one by one
+The Process: It reads row #1, checks if the store is 'Store_A', and adds the amount. Then it drops row #1, picks up row #2, and repeats this 100 million times.
+The Bottleneck: Because it runs in the JVM, every row creates a tiny bit of temporary memory data. The system frequently has to pause the entire operation to clean up this memory (known as Garbage Collection).
+CPU Idle Time: The computer’s main processor (CPU) spends more time waiting to fetch the next row from memory than it does actually doing the math.
+
+2.  Photon Engine (The Turbocharged Factory)Photon is built on Native C++ and uses Vectorized Execution. It treats the data like an automated assembly line.
+The Process: Instead of pulling one row, Photon grabs a vector (a batch of 10,000 rows at once) and loads them straight into the CPU's fastest internal memory cache.
+The Math: Using SIMD (Single Instruction, Multiple Data), Photon tells the CPU: "Filter all 10,000 rows for 'Store_A' and add them up right now." The CPU executes this in a single clock cycle, processing thousands of records simultaneously.
+No Java Delays: Because Photon bypasses the JVM entirely, there are zero memory-cleaning pauses.
+
+The Result:
+Standard Spark might take 30 seconds to finish because it gets bogged down by row-by-row overhead and JVM memory management.
+Photon finishes the exact same query in 5 seconds because it maximizes your hardware's raw processing power.
 Computer:
+
+
+
+How photon process record very fast?
+photon engine uses two advanced hardware-level techniques: 
+1. Vectorized Memory Organization and 
+2. SIMD (Single Instruction, Multiple Data) hardware instructions.
+
+photon engine uses columnar batch processing (entire column data picked), traditional row by row processing.
+Photon grabs a batch of data (a vector, usually ranging from a few hundred to thousands of values) and loads it into the CPU's L1/L2 Cache. 
+and from hardware itself it will process data very fast.
+
+
+
+
+
 Three types
 1. All purpose
 2. Job Cluster
@@ -478,18 +516,6 @@ same file if we run multiple time data will not be duplicated (idempotent)
 support multiple files
 
 
-Auto Loader:
-readStream, writeStream (option we have .trigger(available - True) it will run immediately when file is available.
-df = (spark
-        .readStream   # a streaming dataframe
-        .format("cloudFiles")  # tells Spark to use AutoLoader
-        .option("cloudFiles.format", "json")  # the actual format of out data files. Tells AutoLoader to expect json files
-        .option("cloudFiles.useNotifications",True) # Should AutoLoader use a notification queue
-        .schema(some_custom_schema)  # custom schema of the actual data file
-        .load(f"{actual_data_location}/directory") # location of the actual data file
-    )
-
-in the above .options we can define clientID, clientsecret, tenantid, subscriptionID, connetionstring, resourcegroup.....
 
 
 spark job process 25GB file, how much a cluster configuration is required.
@@ -845,60 +871,6 @@ Proper Partitioning
 
 
 
-### checkpoint and autoloader:
-I have a large file 500GB or 2TB(file csv or parquet). pipeline is failed after processing 300GB data pipeline is failed how to restart it without processing entire file again.
-Using check point concept we can process it but completely using spark we were not able to achieve it.
-spark doesn't support the checkpoint, it has restart it from the begining.
-
-but this can achieve using autoloader.
-source path:
-target path:
-checkpoint locator path:
-
-During the writing, mention this checkpoint locator path, this auto loader  will handle checkpoint incase of failure.
-during this process as well split the large file into multiple files.
-
-
-from pyspark.sql.functions import current_timestamp, input_file_name
-
-source_path = "abfss://apexusdev@apexusdev.dfs.core.windows.net/input/parquet/"
-target_path = "abfss://apexusdev@apexusdev.dfs.core.windows.net/delta/customer/"
-checkpoint_path = "abfss://apexusdev@apexusdev.dfs.core.windows.net/checkpoints/customer/"
-
-df = spark.readStream \
-    .format("cloudFiles") \
-    .option("cloudFiles.format", "parquet") \
-    .load(source_path)
-
-final_df = df.withColumn("source_file", input_file_name()) \
-             .withColumn("processed_time", current_timestamp())
-
-query = final_df.writeStream \
-    .format("delta") \
-    .option("checkpointLocation", checkpoint_path) \
-    .option("mergeSchema", "true") \
-    .outputMode("append") \
-    .trigger(availableNow=True) \
-    .start(target_path)
-
-query.awaitTermination()
-
-
-
-### without auto loader
-Without using autoloader can we achieve this.
-Yes, but it is not as clear an autoloader.
-I will create a control table with status as success.
-
-If in-case a failure happended in between auto loader read the logs from checkpoint path resume the run 
-were it left. their is no duplicates or will not reprocess that again.
-
-First i will read all files from path and create a list.
-second i will read all entries from the control table into another list.
-Now if first list element is not in the second list then read from source and write into the target.
-Once write into the target i will make entry again into the control table of the file is processed.
-
-This will be done in loop.
 
 
 
@@ -1856,6 +1828,12 @@ need to rewrite for parquet, csv.
 If the external location is snowflake table and connection is established with lakehouse federation 
 we can just read the data.
 
+External table and foreign table are different in Databricks. 
+An external Delta table stores Delta files in external cloud storage, so we can run OPTIMIZE and VACUUM. 
+A Snowflake table accessed through Lakehouse Federation is a foreign table; Snowflake owns the storage, 
+so Databricks cannot run Delta VACUUM or OPTIMIZE on it.
+
+
 if we need to  update or delete then connect with spark connector or jdbc connector or snowflake connector.
 then update or delete commands can direclty run in the snowflake database.
 in order to run vaccum or z-ordering (maintenance) commands on the snowflake tables.
@@ -2325,6 +2303,88 @@ This makes the security rules data-driven and allows us to add or remove group-t
 
 
 
+End to End Pipeline Implementation:
+Incremental file ingestion:
+implement scd type2:
+
+List of thing need to get clarify:
+source file type and how frequent we are getting data.
+target to load data into fact and dimension table with in the databricks (unity catalog schemas)
+Initial full load and then incremental load
+Implement in medallion architecture
+any bad data in the file, does bad data need a quarantine
+quality checks need to be loaded into a table?
+if quality checks failed then make pipeline failed (next pipeline).
+
+do we need to implement any partition strategy in the target location?
+
+success or failure entries at audit table for both job and task.
+
+
+
+source 
+	| using adf, pulled based on watermark timestamp filed old and new.
+adls account (Raw data)
+	| check files exist or not, write all the file information into a source table
+bronze load raw into delta tables (this is truncate and load every time) --> once data gor load validate bronze data will source table files.
+	|
+silver (cleansing, dedpulication, drop duplicate, null filter, bad data into quarantine) load data into silver tables.
+	|
+silver to gold DQ validation (checking data quality check like, length, counts, null count, size validation, filter null values on key column, main tain percentage (condition pass count/ total count) if percentage meets trigger the silver to gold layer notebook, if not fail the pipeline).
+	|
+gold  (using merge(upsert) to join silver and gold), here implementing scd type2 logic based on key columns.
+		If key columns exist in source and target then insert as current flag = Y, before update status to N, key columns exist in source not in target insert, not exist in source and exist in target delete.
+	|
+reconsiliation check between.
+	|
+	watermark update
+
+
+Point to cover into between:
+handling each notebook run status sucess or fail in audit table
+silver layer is also truncate and load for each run
+retries maintain an source table about all pipelines/task info, a column with retries 0, 1 (failed update pipeline retrie status 1)
+			logic if retry status = 1 then overwrite else append data.
+fact table design level f grain need to keep during the load.
+bronze and silver layer schema evolution for any change to adapt automatically.
+
+
+flow:
+ADF incremental extraction
+        ↓
+ADLS landing
+        ↓
+Manifest entry: RECEIVED
+        ↓
+Read file as Bronze DataFrame
+        ↓
+Clean into Silver DataFrame
+        ↓
+Write bad records to quarantine
+        ↓
+Run Silver DQ checks
+        ↓
+Gold SCD2 and fact MERGE
+        ↓
+Reconciliation
+        ↓
+Update watermark
+        ↓
+Manifest entry: SUCCESS
+        ↓
+Move file to archive
+
+
+
+
+data quality checks need to be done before gold layer because of DQ checks failed then fix the data and process it again.
+reconsilication checks:
+Reconciliation checks verify that data moved from a source to a target completely and correctly. 
+Data engineers usually run them after ingestion or transformation and before marking a pipeline successful.
+Ex: source count, target count
+total amount at source and target
+duplicate and non duplicate counts validation.
+....
 
 
 
@@ -2332,8 +2392,227 @@ This makes the security rules data-driven and allows us to add or remove group-t
 
 
 
+### Auto Loader:
+process files incrementally
 
 
+Auto Loader:
+readStream, writeStream (option we have .trigger(available - True) it will run immediately when file is available.
+df = (spark
+        .readStream   # a streaming dataframe
+        .format("cloudFiles")  # tells Spark to use AutoLoader
+        .option("cloudFiles.format", "json")  # the actual format of out data files. Tells AutoLoader to expect json files
+        .option("cloudFiles.useNotifications",True) # Should AutoLoader use a notification queue
+        .schema(some_custom_schema)  # custom schema of the actual data file
+        .load(f"{actual_data_location}/directory") # location of the actual data file
+    )
+
+
+query = final_df.writeStream \
+    .format("delta") \
+    .option("checkpointLocation", checkpoint_path) \
+    .option("mergeSchema", "true") \
+    .outputMode("append") \
+    .trigger(availableNow=True) \
+    .start(target_path)
+
+query.awaitTermination()
+
+
+
+ingest data in both batch and steam mode.
+two file detection modes or file discovery modes.
+1. Directory List (uses API calls to detect new files)
+	RocksDB is used for Metata
+	Autoloader identifies files and ensure that their metadata is saved in a scalable key-value store (Rocks DB) in its pipelines checkpoint location.
+
+2. File Notification (uses notification and queue services - required elevated cloud permissions for setup)
+	Notification service would put a file event with metadata in the Queue for auto loader to subscirbe and consume.
+
+automatically detect the schemas based on files
+
+
+
+
+checkpoint directory required.
+autoloader store schema for schema evulotion purpose in the checkpoint location (cloudFiles.schemaLocation).
+
+Read all column in string.
+schemaHints used to define the column data types even file reading in string format we can define column data types using schemaHints.
+
+ 
+
+
+Schema Evolution modes: 
+default addNewcolumn
+rescue.  will not fail when new column added, default it will add _rescued_data field added and data write into this field. Instead of failing the pipelie.
+failonnewcolumn
+None  new field will not accept it.
+
+
+
+How autoloader knows which file it is already processed.
+source has 3 files on day1, autoloader process these files and maintain a metadata in the checkpoint.
+Day2 if the checkpoint path exist and file is not empty it first read information from the checkpoint and skip the already processed.
+
+This checkpoint uses RocksDB key-value store.
+
+like print command to view checkpoint path:
+SELECT *
+FROM cloud_files_state('/checkpoints/orders');
+
+
+
+Checkpoint location delete:
+Ideally we shouldn't delete it, if it is deleted autoloader will reprocess those file again, because autoloader will know what files process by checkpoint path.
+
+
+
+continues stream or trigger batches:
+.trigger(availableNow = True) --> write data in batch mode.
+
+processingTime="1 minute" streaming  continuous streaming for every miuntes. A new micro batch get created.
+if already a micro batch is process no new batch will run parallel, until the first mirco batch get completed. new one won't run.
+
+
+If their is no files after few micro batches, micro batch triggeres check for file, if no new file just empty run.
+
+
+two Auto Loader pipelines use the same checkpoint? No. Each streaming query should have its own checkpoint
+
+
+Can I change the source path and continue using the same checkpoint?
+Be careful. Major query/source changes against an existing checkpoint can be incompatible. In production, checkpoint identity should correspond to a specific streaming pipeline.
+
+
+
+Auto Loader vs COPY INTO — when would you choose each?
+A good explanation:
+Auto Loader
+   → continuous/incremental ingestion
+   → Structured Streaming
+   → high file volumes
+   → schema evolution
+   → streaming checkpoints
+
+COPY INTO
+   → SQL-oriented incremental ingestion
+   → simpler batch ingestion scenarios
+   → less streaming-oriented
+
+
+
+   Autoloader will not process two same files name.
+   example: landing/orders.csv
+   			landing/orders.csv
+   since both file name are same first file will be processed and keep this file name in the checkpoint location. Since checkpoint has filename already it won't process this file again.
+
+   Databricks recommends immutable input files for this reason.
+
+
+In a file duplicate records are thier, autoloader will process those duplicate records because autoloader tracks at file level not at data level.
+
+
+
+One millions files arrived in the source.
+autoloader is processing in batch, all the files will not processed in batch, internally autoloader will process these files in micro-batches.
+
+micro-batch by micro batch files will be processed.
+default autoloader will process 1000 files at a time
+can increase file count based on .option("cloudFiles.maxFilesPerTrigger", 5000)
+size based on 
+.option("cloudFiles.maxBytesPerTrigger", "10g")
+
+
+
+stream process: here also processing will be done by micro batches based on processingtime.
+
+
+
+how does it discover 1 million files?
+This is another senior-level interview point. Auto Loader supports different file-discovery approaches.
+For very large-scale workloads, Databricks currently recommends file events / file notification-based discovery rather than repeatedly listing huge directories. Databricks Docs
+With directory listing:
+ADLS
+  ↓
+Auto Loader lists directory
+  ↓
+Finds new files
+  ↓
+Processes them
+
+
+This is simple, but as your directory grows to millions of objects, repeated directory listing can become more expensive and slower.
+With managed file events:
+1. New file arrives in ADLS
+             ↓
+2. Cloud file event generated
+             ↓
+3. File-event service tracks metadata
+             ↓
+4. Auto Loader gets new-file information
+             ↓
+5. Process file
+
+After initial synchronization, Auto Loader can use the file-event cache to incrementally discover new files rather than repeatedly scanning the entire directory.
+
+
+Bad/malformed source record
+For CSV/JSON you can choose how malformed data is handled. Auto Loader also supports _rescued_data for certain schema/type mismatches.
+
+
+"Auto Loader is processing 1,000 files. The micro-batch fails halfway through. What will you do?"
+
+A strong answer is:
+“Auto Loader runs on Structured Streaming, so I would preserve the existing checkpoint. If a micro-batch fails, it isn't recorded as successfully committed. I first identify and fix the root cause—such as schema change, bad data, OOM, or infrastructure failure—and restart the stream using the same checkpoint. Structured Streaming resumes from the last successful checkpoint and retries the unsuccessful batch. When writing directly to Delta, Delta transactions and checkpointing provide exactly-once committed output.
+
+
+
+Failure or rerun:
+fix the issue and rerun, it starts from where it left.
+
+
+
+500GB file processing with autoloader:
+For a single 500 GB file, Auto Loader will place that entire file in one micro-batch. Auto Loader does not split one file across multiple micro-batches. Spark can still process the contents of that file in parallel using multiple partitions/tasks when the file format supports parallel reads. If that micro-batch fails after processing part of the file, Auto Loader does not maintain a byte-level checkpoint such as “300 GB completed.” When the failed micro-batch is retried, the file is processed again as part of that micro-batch. Auto Loader checkpointing tracks stream progress and file-processing state, not an offset inside an individual file.
+
+autoloader checkpoint concept will work at file level not at the data level inside of a file.
+
+Process large file is not an good option with auto loader, convert the it into multiple files and process it using autoloader.
+
+single microbatch multiple files can also be processed, not as one file to one micro batch.
+
+Auto Loader currently supports these source file formats:
+- CSV
+- JSON
+- Parquet
+- Avro
+- ORC
+- XML
+- Text
+- Binary files using binaryFile
+
+
+
+How would you design Auto Loader for 200 tables?
+For 200 tables, I would build a metadata-driven Auto Loader framework. Auto Loader is file-based, so each logical source table would have its own landing folder containing incoming files. I would maintain source path, file format, target Bronze table, schema location, and checkpoint location in a control table. A generic readStream/writeStream function would read these parameters and execute the ingestion. Each logical table gets its own checkpoint—not each individual file—so Auto Loader can independently track which files have already been processed for that source. I would then use Databricks Jobs or Lakeflow to orchestrate and parallelize the table ingestion based on workload and SLA.
+
+
+
+### without auto loader
+Without using autoloader can we achieve this.
+Yes, but it is not as clear an autoloader.
+I will create a control table with status as success.
+
+If in-case a failure happended in between auto loader read the logs from checkpoint path resume the run 
+were it left. their is no duplicates or will not reprocess that again.
+
+First i will read all files from path and create a list.
+second i will read all entries from the control table into another list.
+Now if first list element is not in the second list then read from source and write into the target.
+Once write into the target i will make entry again into the control table of the file is processed.
+
+This will be done in loop.
 
 
 
@@ -2519,7 +2798,12 @@ Least-privilege access
 
 A concise interview answer would be:
 
-I implement region-based table security in Databricks using Unity Catalog row filters. Users receive the normal USE CATALOG, USE SCHEMA, and SELECT privileges, while a SQL UDF evaluates is_account_group_member() against the row’s region. For a single table, I attach the UDF using SET ROW FILTER. For curated datasets, I use dynamic views, and for centrally applying consistent policies across many tagged tables, I use Unity Catalog ABAC.
+I implement region-based table security in Databricks using Unity Catalog row filters. 
+Users receive the normal USE CATALOG, USE SCHEMA, and SELECT privileges, 
+while a SQL UDF evaluates is_account_group_member() against the row’s region. 
+For a single table, I attach the UDF using SET ROW FILTER. For curated datasets, 
+I use dynamic views, and for centrally applying consistent policies across many tagged tables, 
+I use Unity Catalog ABAC.
 
 
 
