@@ -2616,8 +2616,54 @@ This will be done in loop.
 
 
 
+Where the files are	Can Auto Loader read them?	How
+SFTP server	Yes, with the Databricks SFTP connector	Create a Unity Catalog SFTP connection, 
+then use an sftp:// path with cloudFiles. Azure Databricks requires Runtime 17.3 or later.
 
 
+Load data into adls and use autoloader to load data from adls to bronze.
+
+
+
+
+### copy into:
+It is also used to copy data from files into delta table.
+copy into is an idempotent, even rerun same file again and again. data will not loaded more than once.
+
+How copy into main idempotent.
+Once data loaded into delta table, a delta log file get created inside a copy_into_log file get created.
+In this copy_into_log file maintain processed file information.
+
+When we rerun the copy into command it will first check this log if the file exist or not, If it exist data will not get loaded.
+
+
+* multiple file has the same data, copy into doesn't know about data, it knows only about the data.
+duplicate data will get loaded.
+* if you change file name then it will process that file, it treat has new file.
+* if you made any changes to existing file but without change file name still it won't process this file again.
+
+
+Auto Loader uses its stream checkpoint to track discovered and processed files.
+COPY INTO uses internal loaded-file metadata associated with the target Delta table, which you may see under _delta_log/_copy_into_log.
+
+
+copy into is an good option for daily or weekly processing thousands of file.
+auto loader is good for millions of files.
+
+
+
+copy_options (force = true) means idempotency is disabled and files are loaded regardless of whether they've been loaded before
+
+copy_options (mergeschema = true) the schema can be evolved according to the incoming data.
+								  load into target, automatically column data types picked and if any new column added target table also get added without failing the pipeline.
+
+
+copy into target table from path;
+copy into target table select column from path;
+COPY INTO rajeswariade.bronze.orders_raw
+FROM 'abfss://landing@<storage-account>.dfs.core.windows.net/ecommerce/orders/'
+FILEFORMAT = CSV
+FORMAT_OPTIONS ('header' = 'true');
 
 
 
