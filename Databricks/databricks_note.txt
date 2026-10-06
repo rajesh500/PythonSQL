@@ -232,7 +232,11 @@ WHERE sale_date = DATE '2026-09-01';
 
 Partition pruning skips all other dates.
 
-If the selected partition contains only a small amount of data, partitioning may be sufficient. You may not need Z-Ordering.
+Partition pruning means Spark/Databricks reads only the partitions needed for your query 
+instead of scanning the entire table.
+
+If the selected partition contains only a small amount of data, 
+partitioning may be sufficient. You may not need Z-Ordering.
 
 Query 2: Filter by partition and customer
 SELECT *
@@ -2595,7 +2599,14 @@ Auto Loader currently supports these source file formats:
 
 
 How would you design Auto Loader for 200 tables?
-For 200 tables, I would build a metadata-driven Auto Loader framework. Auto Loader is file-based, so each logical source table would have its own landing folder containing incoming files. I would maintain source path, file format, target Bronze table, schema location, and checkpoint location in a control table. A generic readStream/writeStream function would read these parameters and execute the ingestion. Each logical table gets its own checkpoint—not each individual file—so Auto Loader can independently track which files have already been processed for that source. I would then use Databricks Jobs or Lakeflow to orchestrate and parallelize the table ingestion based on workload and SLA.
+For 200 tables, I would build a metadata-driven Auto Loader framework. Auto Loader is file-based, 
+so each logical source table would have its own landing folder containing incoming files. 
+I would maintain source path, file format, target Bronze table, schema location, and checkpoint 
+location in a control table. A generic readStream/writeStream function would read these parameters and 
+execute the ingestion. Each logical table gets its own checkpoint—not each individual file—so 
+Auto Loader can independently track which files have already been processed for that source. 
+I would then use Databricks Jobs or Lakeflow to orchestrate and parallelize the table ingestion based on 
+workload and SLA.
 
 
 
@@ -3020,13 +3031,1290 @@ Once code deployed to QA code is available in the shared folder.
 
 
 
+Databricks Account, Workspace, Metastore and Catalog:
+1. Databricks Account
+A Databricks Account is the top-level organizational container.
+One company normally has one Databricks account and can create multiple workspaces under that account.
+
+Example:
+Databricks Account
+│
+├── Dev Workspace
+├── QA Workspace
+├── Prod Workspace
+├── Finance Workspace
+└── Sales Workspace
+
+A separate Databricks account is generally not required for every project.
+
+2. Databricks Workspace
+A workspace is where developers and data engineers work.
+
+A workspace contains or provides access to:
+Notebooks
+Jobs/Workflows
+Compute
+SQL Warehouses
+Git folders
+Workspace permissions
+Development artifacts
+
+Example from our setup:
+rajeswariade = Dev Workspace
+rajeswariaqe = QA Workspace
+
+These are two workspaces, not two Databricks accounts.
+
+
+a user can have workspace level access can view 
+Notebooks
+Jobs/Workflows
+Compute
+SQL Warehouses
+Git folders
+Workspace permissions
+Development artifacts
+
+not the data at catalog level.
+In order to view the data need permission at catalog, if the user have the access at workspace level can't access the data.
+Both are two different permissions.
+
+datashare between two workspace doesn't need a share, just based on permissions and binding this can be done.
+catalog belong to metastore not to the workspace.
+
+In order to maintain environments need a separate workspace, project like finance, hr, sales etc... maintain separate workspace.
+each has thier own catalog but all of them are having one metastore.
+
+rajeswariade = Dev workspace
+rajeswariaqe = QA workspace
+Both can exist under the same Databricks account.
+
+
+One catalog on multiple project or workspaces, these are hard to do
+security isolation
+workspace isolation
+ownership separation
+environment separation
+permission management
+storage separation
+governance
+
+separate workspace for each, above options become easy.
+
+
+In order to access one catalog between two workspaces, two workspaces can be attached to the same metastore.
+if two workspaces accessing one catalog or table, it doesn't means two copies are maintained at both.
+only one copy access in both workspace.
+
+3. Unity Catalog Metastore
+The Unity Catalog metastore is the top-level governance container for Unity Catalog.
+
+It stores and manages metadata and governance information such as:
+Catalogs
+Schemas
+Table definitions
+View definitions
+Column names
+Data types
+Table locations
+Ownership
+Permissions
+Functions
+Volumes
+Governance information
+
+The actual table data is generally stored in cloud storage such as ADLS.
+
+Example:
+Unity Catalog Metastore
+        ↓
+Metadata
+        ↓
+Catalog
+        ↓
+Schema
+        ↓
+Table
+        ↓
+ADLS
+(actual Delta/Parquet data)
+
+4. Sharing One Metastore Across Workspaces
+Multiple workspaces can use the same Unity Catalog metastore.
+
+Example:
+Databricks Account
+        ↓
+Shared Metastore
+        │
+        ├── Dev Workspace
+        │     rajeswariade
+        │
+        └── QA Workspace
+              rajeswariaqe
+
+This means both workspaces operate under the same centralized Unity Catalog governance system.
+It does NOT automatically mean every user can access every table.
+User access is still controlled using Unity Catalog permissions.
+
+
+5. Catalog
+A catalog is one level below the metastore.
+
+Hierarchy:
+Metastore
+   ↓
+Catalog
+   ↓
+Schema
+   ↓
+Table / View / Volume
+
+Example:
+
+ecommerce
+   ↓
+gold
+   ↓
+orders
+
+Fully qualified table name:
+
+ecommerce.gold.orders
+
+Where:
+ecommerce = Catalog
+gold      = Schema
+orders    = Table
+6. Can One Catalog Be Used by Multiple Workspaces?
+
+Yes.
+
+Example:
+Shared Metastore
+       ↓
+ecommerce
+       ↓
+gold.orders
+     /       \
+    /         \
+Dev WS       QA WS
+
+Both workspaces can access the same table if:
+Both workspaces are attached to the same metastore.
+The catalog is available to both workspaces.
+The user has the required Unity Catalog permissions.
+
+Important:
+Dev Workspace
+     ↓
+ecommerce.gold.orders
+
+QA Workspace
+     ↓
+ecommerce.gold.orders
+
+These are NOT two copies of the table.
+Both workspaces are accessing the same Unity Catalog table and the same underlying data.
+
+
+7. Workspace Access vs Data Access
+These are different.
+Workspace Access
+
+Workspace access answers:
+Can this user enter this workspace?
+
+Example:
+Rajesh
+   ├── Dev Workspace access
+   └── QA Workspace access
+
+This does NOT automatically give table access.
+
+8. Unity Catalog Data Access
+
+Unity Catalog decides:
+Can this user access the data?
+
+For reading a table, normally the user needs:
+USE CATALOG
+      +
+USE SCHEMA
+      +
+SELECT
+
+Example:
+GRANT USE CATALOG
+ON CATALOG ecommerce
+TO `rajesh@example.com`;
+
+GRANT USE SCHEMA
+ON SCHEMA ecommerce.gold
+TO `rajesh@example.com`;
+
+GRANT SELECT
+ON TABLE ecommerce.gold.orders
+TO `rajesh@example.com`;
+
+9. Example With Two Users
+
+Assume:
+Dev Workspace = rajeswariade
+QA Workspace  = rajeswariaqe
+
+Shared Catalog = ecommerce
+Schema         = gold
+Table          = orders
+
+Users:
+User 1 = Rajesh
+User 2 = John
+
+Both users may have access to both workspaces.
+
+Rajesh
+   ├── Dev Workspace
+   └── QA Workspace
+
+John
+   ├── Dev Workspace
+   └── QA Workspace
+
+But only Rajesh is given table permissions.
+
+ecommerce.gold.orders
+        |
+   --------------
+   |            |
+ Rajesh        John
+   |            |
+ SELECT       No SELECT
+   |            |
+   ↓            X
+Can read     Cannot read
+
+So Rajesh can execute:
+
+SELECT *
+FROM ecommerce.gold.orders;
+
+from either Dev or QA workspace.
+John cannot read the table.
+
+Important rule:
+Workspace access does not mean data access.
+
+10. Workspace-Catalog Binding
+
+Workspace-catalog binding controls:
+Which workspace is allowed to access which catalog?
+
+Example:
+ecommerce
+    │
+    ├── Dev Workspace
+    └── QA Workspace
+
+Here the catalog is available from both workspaces.
+
+Another design:
+
+ecommerce_dev
+       ↓
+Dev Workspace only
+
+ecommerce_qa
+       ↓
+QA Workspace only
+
+This provides stronger environment isolation.
+
+
+11. Isolation
+Isolation means keeping projects, environments, users, and data separated so one environment does not accidentally affect another.
+
+Example:
+
+Dev Workspace
+      ↓
+ecommerce_dev
+      ↓
+Dev data
+
+QA Workspace
+      ↓
+ecommerce_qa
+      ↓
+QA data
+
+This prevents Dev users or Dev processes from accidentally modifying QA data.
+
+
+12. Shared Catalog vs Separate Catalogs
+Shared Catalog
+ecommerce
+   ↓
+gold.orders
+   /       \
+Dev WS     QA WS
+
+Both workspaces access the same data.
+
+Useful when data intentionally needs to be shared.
+
+Separate Catalogs
+Dev Workspace
+      ↓
+ecommerce_dev
+      ↓
+gold.orders
+
+QA Workspace
+      ↓
+ecommerce_qa
+      ↓
+gold.orders
+
+Now Dev and QA have separate data.
+
+This is usually better when environments need isolation.
+
+
+13. Three Levels of Access Control
+
+Remember these three concepts:
+User
+ ↓
+Workspace Access
+ ↓
+Workspace-Catalog Binding
+ ↓
+Unity Catalog Permissions
+ ↓
+Table Access
+Workspace Access
+
+Controls:
+Can the user enter the workspace?
+Workspace-Catalog Binding
+
+Controls:
+Can this workspace use this catalog?
+Unity Catalog Permissions
+
+Controls:
+Can this user read/write this table?
+
+14. Same User Across Multiple Workspaces
+
+An account-level user can be assigned to multiple workspaces.
+
+Example:
+
+Databricks Account
+       ↓
+Rajesh
+       │
+       ├── Dev Workspace
+       └── QA Workspace
+
+Then Unity Catalog permissions determine which data Rajesh can access.
+
+15. SQL Warehouse
+A SQL Warehouse provides compute for SQL queries.
+
+Example:
+Unity Catalog Table
+        ↓
+Underlying data in ADLS
+        ↑
+SQL Warehouse
+        ↑
+SELECT * FROM ecommerce.gold.orders
+
+Responsibilities:
+
+Unity Catalog = Metadata + Governance
+ADLS          = Actual Data Storage
+SQL Warehouse = Compute for SQL queries
+
+A SQL Warehouse does not store the actual table data.
+
+
+use catalog --> can see only catalog name
+use schema --> only see schema name not inside the table object
+select table --> can view the table name and data.
 
 
 
 
 
 
+scheduling the jobs and task:
+All succeeded
+At least on succeeded	--> One or more parents succeeded
+None failed				--> No parent failed and at least one ran
+All done			-->		Run after parents finish regardless of result
+At least one failed -->     Run when one or more parents fail   --> if all succeed no run of child task
+All failed			--> 	Run only when every parent failed
 
+
+
+Retry policy:
+retry at mode  1 time(2 total attempts)
+			   2 time (3 total attempts)
+
+wait 5/10 minutes between retries
+
+
+Retry on timeout  checkmark this one
+
+
+
+
+Metric thresholds: 
+
+
+
+
+Schedule triggers:
+trigger type:
+	Scheduled
+	File arrival
+	Table update
+	continuos
+
+schedule type:
+	interval
+	schedule
+
+
+
+
+Job vs Task
+A Job is the complete workflow.
+A Task is one individual unit of work inside the job.
+
+
+Repair Run:
+Consider:
+A → B → C → D
+
+Initial run:
+A SUCCESS
+B SUCCESS
+C FAILED
+D UPSTREAM_FAILED
+
+You fix the problem in C.
+You generally do not need to rerun the whole job.
+Use:
+Repair Run
+
+Then Databricks can rerun the unsuccessful part:
+A    Already successful
+B    Already successful
+
+C    RERUN
+↓
+D    RUN
+
+That saves time and compute.
+
+
+
+if-else condition:
+Dependencies handle success/failure.
+But sometimes your decision depends on data.
+Example:
+Ingest Data
+    ↓
+Calculate row_count
+    ↓
+row_count > 0 ?
+   /          \
+ Yes          No
+ ↓             ↓
+Transform     No_Data_Task
+
+
+Databricks does not automatically make your task idempotent. Repairing can therefore duplicate data if your task partially wrote data before failing.
+
+
+
+Job concurrency means: how many runs of the same Databricks job are allowed to be active at the same time.
+If my job runs every 10 minutes but normally takes 20 minutes, the next run may overlap. 
+By default Databricks allows one concurrent run per job. 
+I can keep max concurrency at 1 and enable queueing so the next run waits, or 
+increase max concurrent runs if overlapping executions are safe. Before increasing it, 
+I check whether multiple runs can write to the same tables, update the same watermark, or 
+process the same source data.
+
+
+Suppose it is scheduled every 10 minutes:
+10:00 AM
+10:10 AM
+10:20 AM
+
+But one run takes 20 minutes.
+So Run 1 starts:
+10:00 AM → Run 1 starts
+10:20 AM → Run 1 finishes
+
+At 10:10 AM, the next schedule arrives while Run 1 is still running.
+What happens depends on Max concurrent runs and Queueing.
+
+
+Case 1: Max concurrent runs = 1
+This is the default for new jobs. Databricks Documentation
+Max concurrent runs = 1
+
+Timeline:
+10:00 → Run 1 starts
+
+10:10 → Run 2 trigger comes
+         but Run 1 is still running
+
+Only one run is allowed.
+If queueing is enabled:
+Run 1 = RUNNING
+Run 2 = QUEUED
+
+When Run 1 finishes:
+10:20 → Run 1 SUCCESS
+         ↓
+         Run 2 starts
+
+Databricks queueing is enabled by default for jobs created in the UI after April 15, 2024, and queued runs can wait for up to 48 hours when concurrency/resource limits block execution. Databricks Documentation
+
+
+So:
+Max concurrent runs = 1
++
+Queue enabled
+
+Run 1 → RUNNING
+Run 2 → QUEUED
+Run 3 → QUEUED
+
+
+
+
+Case 2: Max concurrent runs = 2
+Now configure:
+Max concurrent runs = 2
+
+Timeline:
+10:00 → Run 1 starts
+
+10:10 → Run 2 starts
+
+Both can run at the same time:
+        Run 1
+          |
+Bronze → Silver → Gold
+
+        Run 2
+          |
+Bronze → Silver → Gold
+
+If another run arrives:
+10:20 → Run 3 trigger
+
+and Run 1 and Run 2 are both still active:
+Run 1 = RUNNING
+Run 2 = RUNNING
+Run 3 = QUEUED
+
+because the job reached:
+Maximum concurrent runs = 2
+
+Databricks allows you to increase this setting specifically when you want overlapping runs, such as frequent schedules or runs with different input parameters. Databricks Documentation.
+
+
+
+job concurrency vs task parallelism:
+Don't confuse these two.
+Job concurrency:
+Run 1       Run 2
+  ↓           ↓
+Job          Job
+
+running simultaneously
+
+Task parallelism happens inside one job run:
+             Job Run 1
+                 |
+          Ingestion_Check
+           /           \
+          ↓             ↓
+   Customers          Orders
+          ↓             ↓
+   Silver_Cust      Silver_Orders
+           \           /
+            ↓         ↓
+              Gold
+
+Customers and Orders can run at the same time even if:
+
+
+
+Job1:
+Daily_Ecommerce_ETL_JOB
+Task 1 → Ingest_Customers
+Task 2 → Transform_Customers  --> task1 succeed then task2
+Task 3 → Load_Customers   --> task2 succeed then task3
+
+
+job2:   Task dependencies
+			customer bronze		customer silver
+ingest 												gold
+			orders bronze		order silver
+
+
+
+
+
+Job3:
+None failed:
+task1
+			task3
+task2
+
+if task1 and task2 succeed then task3
+it task1 succeed and task2 skipped then task3 still runs
+if task1 succeed and task2 failed then task3 will not run.
+
+catch is task2 skipped scenario.
+if one dependency task need to be skipped and other need to be execute in this kind of scenario None failed need to be used.
+
+
+
+
+
+You have 10 dependent Databricks tasks and Task 5 fails. What happens and how do you recover?”
+A strong answer is:
+If Tasks 6–10 depend directly or indirectly on Task 5 with the default All succeeded dependency, they will not execute after Task 5 fails. I would first use the task logs and job run DAG to identify the root cause. For transient problems, I configure task-level retries and retry intervals. If the retries are exhausted and the job fails, after fixing the issue I can use a Repair Run so Databricks reruns the unsuccessful task and the necessary downstream tasks instead of rerunning Tasks 1–4. I also design Task 5 to be idempotent because a repair starts that task again from the beginning; if it partially wrote data before failure, non-idempotent append logic could introduce duplicates. For operational handling I normally add an At least one failed branch for failure logging/notifications and an All done finalization task for audit cleanup. Databricks Documentation
+
+That answer covers dependency + failure + retry + repair + idempotency + monitoring, which is what interviewers are usually looking for.
+
+
+
+
+## When would you choose CDC over timestamp-based incremental loading?:
+
+The candidate gave a very clear reply:
+Timestamp incremental loading tells you which rows changed since the last run. CDC captures the actual database changes as they happen  INSERT, UPDATE, and DELETE.
+
+A simple example: if a row is deleted, a query using updated_at > last_run_time cannot find that row anymore. CDC can still capture that delete from the database change log/WAL.
+
+That answer stood out because it was simple and practical:
+Timestamp incremental = what changed since the last run
+CDC = what actually happened in the database.
+
+
+
+
+## shuffle join:
+A shuffle join is not a logical join type like INNER, LEFT, or RIGHT. It refers to a join execution where Spark must redistribute data across partitions based on the join key.
+For example:
+Large Table A
+JOIN
+Large Table B
+ON A.customer_id = B.customer_id
+
+If both datasets are large and cannot be broadcast, Spark may choose a Sort Merge Join.
+The execution looks like:
+Table A                       Table B
+   ↓                             ↓
+Shuffle by customer_id      Shuffle by customer_id
+   ↓                             ↓
+Same keys come to same partitions
+          ↓
+        Sort
+          ↓
+     Sort Merge Join
+
+
+
+
+## How would you identify whether a Spark job is suffering from excessive shuffling:
+I check the Spark UI for high Shuffle Read and Shuffle Write, long-running stages, large data movement between executors, spill to disk, and skewed tasks. Then I inspect the physical plan for Exchange operators to find what operation is causing the shuffle.
+
+For example, imagine your job processes 100 GB, but Spark UI shows:
+Input Data       = 100 GB
+
+Stage 1:
+Shuffle Write    = 250 GB
+
+Stage 2:
+Shuffle Read     = 250 GB
+Shuffle Write    = 300 GB
+
+Stage 3:
+Shuffle Read     = 300 GB
+
+Your original input is only:
+100 GB
+
+but Spark is moving hundreds of GB across executors:
+100 GB input
+     ↓
+250 GB shuffle
+     ↓
+300 GB shuffle
+
+That's a strong sign that the workload has significant shuffle overhead.
+1. Check Spark UI
+Go to:
+Databricks Job / Query
+        ↓
+Spark UI
+        ↓
+Stages
+
+Look at metrics such as:
+Shuffle Read Size
+Shuffle Write Size
+Shuffle Read Records
+Shuffle Write Records
+Memory Bytes Spilled
+Disk Bytes Spilled
+Task duration
+
+For example:
+Stage 5
+
+Input              20 GB
+Shuffle Write      180 GB
+Shuffle Read       160 GB
+Disk Spill          90 GB
+Duration            18 min
+
+This deserves investigation because the amount of data being shuffled is much larger than the useful input/output.
+However, there isn't a universal rule such as:
+Shuffle > 2 × input = excessive.
+
+Check physical execution plan:
+df.explain("formatted")
+customers.join(orders, "customer_id").explain("formatted")
+
+SortMergeJoin
+   |
+   +-- Exchange hashpartitioning(customer_id, 200)
+   |
+   +-- Exchange hashpartitioning(customer_id, 200)
+
+ exchange means shuffle.
+
+
+shuffle opertaions:
+groupBy
+join
+distinct
+orderBy
+repartition
+     ↓
+Wide transformations
+     ↓
+Data must move between partitions
+     ↓
+Shuffle
+
+
+
+Techniques to handle shuffle:
+techniques such as broadcast joins, filtering before joins, avoiding unnecessary repartitioning, selecting fewer columns, handling skew, or tuning partition sizes.
+
+
+
+
+
+
+concurrent write in delta table:
+
+Delta Lake supports concurrent writes using optimistic concurrency control. It does not normally lock the whole table before every write.
+
+Multiple writers can read the same snapshot and prepare their transactions concurrently. Databricks Documentation  
+For example, Writer A and Writer B both start from version 10. Writer A commits first, creating version 11. When Writer B tries to commit, it does not blindly create another version 11. Delta checks the changes that occurred since Writer B's snapshot. If Writer B's transaction conflicts with the transaction committed in version 11, Writer B fails and must retry. If there is no conflict, Writer B can commit on top of the latest state and create version 12
+
+
+Here writer B check at file level.
+If writer A update parquet file 1 has cusomter ID = 101
+writer B update the same file with different customer ID = 901
+still here conflict occurs and writer B fails.
+
+
+if writer A updates parquet file 1 and write B update parquet file2 with different customer ID, no conflict here writer B commit the data.
+
+
+row-level concurrency:
+If row level concurrency enabled then 
+writer A tries to update parquet file 1 customer ID = 101
+writer B tries to update different file like 3 or 4 but for the same customer ID = 101
+here still conflicts occurs and writer B fails.
+
+
+Without row-level concurrency
+→ conflict detection is largely file-level
+→ different rows in same file can conflict
+
+With row-level concurrency
+→ conflict detection can happen at row level
+→ different rows in same file can proceed
+→ same row modified concurrently can conflict.
+
+
+Monitor delta table:
+First, I monitor every load with control/audit metrics such as source row count, target row count, inserted/updated/deleted counts, rejected records, run ID, start/end time, and reconciliation status. That tells me whether the pipeline produced the expected data—not just whether the job technically succeeded.
+
+
+In a schema if we have 10 tables, user has to view only 8 tables then we have to provide access to each table.
+
+
+
+
+## Masking implementation at column level:
+
+CREATE OR REPLACE FUNCTION security.mask_ssn(ssn STRING)
+RETURN CASE
+    WHEN is_account_group_member('pii_admins')
+        THEN ssn
+    ELSE CONCAT('***-**-', RIGHT(ssn, 4))
+END;
+
+
+Then attach it to the sensitive column:
+ALTER TABLE prod.customer.customers
+ALTER COLUMN ssn
+SET MASK security.mask_ssn;
+
+
+Now the developer can still have normal table access:
+GRANT SELECT
+ON TABLE prod.customer.customers
+TO `developers`;
+
+
+
+
+
+If Dev, Test, and Prod are separate Databricks workspaces, then access between them depends first on whether those workspaces are attached to the same Unity Catalog metastore.
+If all three workspaces use the same metastore, you do not copy catalog permissions from one workspace to another. The catalog is a metastore-level object, and multiple workspaces attached to that metastore can potentially access it. By default, catalogs are accessible from all workspaces attached to the same metastore unless you restrict them using workspace-catalog bindings.
+
+
+For example:
+Unity Catalog Metastore
+│
+├── Dev Workspace
+├── Test Workspace
+└── Prod Workspace
+
+Catalogs:
+dev_catalog
+test_catalog
+prod_catalog
+
+Suppose you want users working in the Dev workspace to read data from test_catalog.
+You need two things.
+First, test_catalog must be accessible from the Dev workspace. If test_catalog is currently bound only to the Test workspace:
+test_catalog
+    ↓
+Test Workspace only
+
+then even if a developer has SELECT, they cannot query it from Dev. Workspace binding takes precedence over object privileges. Databricks Documentation
+You would bind test_catalog to both workspaces, perhaps making Dev read-only:
+test_catalog
+   ├── Test Workspace → Read/Write
+   └── Dev Workspace  → Read Only
+
+Databricks explicitly supports read-only workspace bindings, which is useful for exactly this kind of cross-environment access.
+
+
+## Binding means:
+restricting the acess of catalog accessing from another workspace.
+by default all the workspace uses same metastore then we cna access test catalog from dev.
+if catlaog binded to specific workspace then this catalog can be accessed from that workspace only.
+
+
+Metric View:
+A Metric View in Databricks is a Unity Catalog object used to define business metrics once and reuse 
+them consistently across dashboards, notebooks, Genie, alerts, and BI tools. It acts like a semantic layer on
+top of your tables.
+
+
+A metric view in Databricks is a Unity Catalog semantic-layer object that defines reusable business metrics
+and dimensions. Instead of rewriting calculations like revenue, customer count, or conversion rate in every
+dashboard, we define them once in the metric view. Users can then group those measures dynamically by
+dimensions such as region, product, or date, ensuring consistent KPI definitions across SQL, dashboards, 
+Genie, and external BI tools.
+
+
+Define metric view information in the YAML file and create a metric view.
+%sql
+create or replace view rajeswariade.gold.sales_metric 
+with metrics
+language YAML
+as $$
+version: 1.1
+source: rajeswariade.gold.fact_sales
+
+fields:
+  - name: order_status
+    expr: source.order_status
+
+measures:
+  - name: total_revenue
+    expr: SUM(source.sales_amount)
+$$;
+
+
+Once metric view is created access them using measure for the fields.
+
+select order_status, measure(total_revenue) from rajeswariade.gold.sales_metric
+group by order_status;
+
+Without measure() function for the number fields we can't query it.
+
+
+Limitations:
+They are read-only semantic objects.
+Measures must be queried as measures.
+Databricks Documentation
+SELECT * is not enough when you want evaluated measures. You must explicitly list dimensions and wrap measures appropriately
+
+
+
+
+
+## Event Hub:
+Event: an order is placed it is an event.
+event is captured in JSON format in the eventhub.
+
+An online application publish event, eventhub receive those events.
+
+
+Namespace:
+Eventhub namespace is a container contain n no of eventhubs.
+
+Eventhub:
+A named stream of events inside the namespace.
+Exmaple: orders
+
+
+eventhub can have upto 32 partitions.
+data skewness might be problem in eventhub.
+
+In the eventhub multiple partitions are their, data might gone into one partition then dataskew ness occurs.
+based on partition key we can fix the data skewness problem.
+
+
+One Namespace can have multiple eventhubs, one hub has multiple partitions.
+multiple consumer groups consume data from one event hub.
+
+One namespace can contain several Event Hubs—for example, orders, payments, and website-clicks.
+
+
+Partition:
+An Event Hub divides its stream into partitions. Each partition is an ordered log: newly accepted events are appended to its end.
+
+How the partition is happening here.
+based on partition key
+partition ID from the prodecure (The producer can choose a particular partition—for example, partition 1. Those events go directly to that partition instead of using key-based routing).
+
+partition key: order_id, customer_id from producer.
+
+
+Consumer group:
+consume data from eventhub
+multiple consumer groups consume from eventhub.
+
+ordering is preserved in the partitions.
+
+
+offset:
+position of the event with in the partition.
+it avoid reading data again for the consumer group in case of eventhub failure.
+
+checkpoint:
+A checkpoint stores processing progress so a consumer can resume after restarting.
+
+
+
+event can't be removed.
+event hub pricing tiers:
+Basic   Throughput 1 MB/sec,  10 Event hubs per namespace, 1 Consumer groups per event hub, max retention period 1 day, apache kafka not available, storage retention 84 GB
+Standard Throughput 1 MB/sec,  10 Event hubs per namespace, 20 Consumer groups per event hub, max retention period 7 day, apache kafka  available, storage retention 84 GB
+Premium  Throughput No limit  100 Event hubs per namespace, 100 Consumer groups per event hub, max retention period 90 day, apache kafka  available, storage retention 1TB
+Dedicated  Throughput No limit,  1000 Event hubs per namespace, 1000 Consumer groups per event hub, max retention period 90 day, apache kafka  available, storage retention 10TB.
+
+
+
+
+
+
+The reader returns transport columns such as:
+Column						Meaning
+value					Event payload as bytes
+key						Record key as bytes
+topic					Event Hub name
+partition				Source partition
+offset					Position within that partition
+timestamp				Transport timestamp
+
+
+
+Event Hubs Capture:
+Capture is an optional feature that automatically writes incoming events to Azure Blob Storage or ADLS.
+data store in avro format.
+
+
+Streaming path: Databricks reads directly from Event Hubs.
+Archive path: Capture saves files that can support later batch processing or replay.
+
+
+Auto-Inflate automatically scales the number of Throughput Units assigned to your Standard Tier Event Hubs Namespace when your traffic exceeds the capacity of the Throughput Units assigned to it. You can specify a limit to which the Namespace will automatically scale.
+
+
+
+
+
+Near real time:
+Near real-time data means data becomes available for processing or analysis very shortly after it is generated, usually within seconds or a few minutes.
+
+For example, imagine an e-commerce website:
+10:00:00 AM → Customer places an order
+10:00:05 AM → Order enters Event Hub/Kafka
+10:00:10 AM → Databricks processes it
+10:00:20 AM → Dashboard shows the order
+
+
+Event Hubs:
+
+it can receive and process millions of events per second.
+Supports high-throughput, event driven atchitectures,
+
+
+
+Throughput unit:
+Ingress: up to 1 MB per second or 1000 events per seconds.
+Egress: Up to 2 MB per second or 4096 events per second.
+
+
+
+
+
+How do authentication and permissions work?
+Event Hubs supports two common approaches.
+Approach								Producer permission								Consumer permission
+SAS policy / connection string				Send											Listen
+Microsoft Entra ID						Azure Event Hubs Data Sender					Azure Event Hubs Data Receiver
+
+
+
+Eventhub:
+create a eventhub
+install a  eventhub library in the cluster(databricks)
+create a secret.
+
+Now using structured stremaing coding process the data continuosly.
+
+all events data load int bronze table then apply transformation, cleanup, etc....
+finally load into gold layer.
+
+
+
+
+Method-2:
+eventhub
+create a keyvalue pair in the key-valut.
+secret in the databricks
+using kafka bootstrap server get the datainto databricks
+
+Now using structured stremaing coding process the data continuosly.
+
+all events data load int bronze table then apply transformation, cleanup, etc....
+finally load into gold layer.
+
+
+EH_NAMESPACE = "eventhubdemo"
+EH_NAME = "orders"
+
+connection_string = dbutils.secrets.get(
+    scope="eventhub-demo",
+    key="ehdbsecret101"
+)
+
+
+
+kafka_options = {
+    "kafka.bootstrap.servers":
+        f"{EH_NAMESPACE}.servicebus.windows.net:9093",
+
+    "kafka.security.protocol": "SASL_SSL",
+    "kafka.sasl.mechanism": "PLAIN",
+
+    "kafka.sasl.jaas.config": (
+        "kafkashaded.org.apache.kafka.common.security.plain."
+        "PlainLoginModule required "
+        'username="$ConnectionString" '
+        f'password="{connection_string}";'
+    )
+}
+
+
+
+test_df = (
+    spark.read
+    .format("kafka")
+    .options(**kafka_options)
+    .option("subscribe", EH_NAME)
+    .option("startingOffsets", "earliest")
+    .option("endingOffsets", "latest")
+    .load()
+)
+
+
+
+
+Layer 						 Work performed 
+Producer  				Publish order events with `event_id`, event type, and business timestamp 
+Event Hubs  			Buffer the incoming stream 
+Bronze 					Store raw payload plus topic, partition, offset, and ingestion time 
+Silver  				Parse JSON, validate fields, quarantine invalid events, deduplicate 
+Gold 					Build order facts, sales aggregates, and reporting tables 
+
+
+
+1. The online application produces an order event.
+2. The application sends that event to Event Hubs using HTTPS. Event Hubs does not automatically observe what happens inside the application.
+3. Event Hubs stores and buffers the event.
+4. Databricks reads the event using its Kafka connector, which communicates with Event Hubs through the Kafka protocol. Databricks then processes the data. learn.microsoft.com
+Two details to remember:
+- HTTPS is one publishing option. Applications can also publish using Kafka or AMQP.
+- Kafka and AMQP are protocols. The consumer application or connector performs the reading using one of those protocols. In our Databricks example, that is the Kafka connector.
+
+
+
+
+Pipeline failure:
+retries
+maximum concurrent runs 
+checkpoint
+
+
+
+
+duplicate events handle:
+load raw data into bronze.
+apply deduplicate from bronze to silver.
+using foreachBatch in the writeStream we can handle this.
+
+during writing foreachBatch is kind of loop.
+before writing call another function drop duplicate and use merge to check the event exist in the target location or not.
+when  match it won't insert, otherwise insert it.
+
+like this for every batch of data deduplication can be checked.
+
+Example:
+from delta.tables import DeltaTable
+
+TARGET = "your_catalog.eventhub_demo.order_events_silver"
+
+def write_unique_events(batch_df, batch_id):
+    # Assumes repeated event IDs have the same business payload.
+    unique_events = batch_df.dropDuplicates(["event_id"])
+
+    (
+        DeltaTable.forName(batch_df.sparkSession, TARGET)
+        .alias("target")
+        .merge(
+            unique_events.alias("source"),
+            "target.event_id = source.event_id"
+        )
+        .whenNotMatchedInsertAll()
+        .execute()
+    )
+
+query = (
+    events.writeStream
+    .foreachBatch(write_unique_events)
+    .option(
+        "checkpointLocation",
+        "/Volumes/your_catalog/eventhub_demo/checkpoints/order_events_silver"
+    )
+    .trigger(availableNow=True)
+    .start()
+)
+
+query.awaitTermination()
+
+
+
+
+
+
+readStream.format("kafka").option("maxOffsetsPerTrigger", 10000)
+maxOffsetsPerTrigger know which many events it read.
+if pipeline is failed, using checkpoint pipeline resume.
+In the checkpoint it has the offset it know how many event it is already processed.
+
+
+
+Spark knows where it stopped by tracking the offsets of events in each Event Hubs partition. It saves this progress in the checkpoint.
+An offset is a record’s position in a partition: 0, 1, 2, 3…
+Suppose you have one partition:
+Information	Value
+Last successfully processed offset	999
+Next offset to read	1000
+Latest event’s offset	2999
+Unread events in this example	2,000
+
+
+If you configure:
+.option("maxOffsetsPerTrigger", 1000).
+
+
+
+
+Assigning a batch:
+def process_batch(batch_df, batch_id):
+    print(f"Batch ID: {batch_id}")
+    print(f"Events in this batch: {batch_df.count()}")
+    records.write.format("delta")\
+        .mode("append")\
+        .option("mergeSchema", "true")\
+        .option("txnAppId", APP_ID)\
+        .option("txnVersion", batch_id)\
+        .saveAsTable(TARGET_TABLE)
+
+    # Process this batch's events here.
+
+query = (
+    events.writeStream
+    .foreachBatch(process_batch)
+    .option("checkpointLocation", CHECKPOINT_PATH)
+    .trigger(availableNow=True)
+    .start()
+)
+
+query.awaitTermination()
+
+
+Inside process_batch write is mandatory if we are using foreachBatch in the writeStream.
+What it will do is just call the process_batch function rest will be ignored in the writeStream.
+
+spark automatically pass dataframe to the function.
+batch_id increasing is also done automatically.
+
+The txnAppId and txnVersion options protect against appending the same micro-batch again during retries. 
+Keep the same application ID for the same checkpoint; choose a new application ID if you create a new checkpoint.
+
+
+try, except in the streaming pipeline is same as python.
+
+from_json() parses JSON already inside a DataFrame column. .option("multiLine", True) controls how Spark reads a JSON file.
 
 
 

@@ -108,3 +108,62 @@ HTTP trigger	        When an HTTP request is received	ADF calls the function
 Service Bus trigger	    When a message enters a queue/topic	Process an order event
 Event Hub trigger	    When streaming events arrive	    Validate or route IoT events
 Queue trigger	        When a queue message arrives	    Process files asynchronously
+
+
+
+
+Azure Event Grid and an Azure Functions Event Grid trigger are different components, but they work together closely as the router and the receiver.
+
+
+Azure Event Grid (The Router)
+• What it is: A fully managed, cloud-based event routing service (the postal service).
+• What it does: It receives events from publishers (like Azure Blob Storage or your own custom applications) and reliably routes/pushes them to various subscribers based on filters and topics.
+• Scope: It is an independent Azure resource/service that exists outside of your function app.
+Azure Functions Event Grid Trigger (The Receiver)
+• What it is: A specific binding type inside Azure Functions (the mailbox).
+• What it does: It tells your function code how to listen for, accept, and parse incoming HTTP webhook requests that are dispatched specifically by Azure Event Grid.
+• Scope: It lives inside your Function App's configuration (function.json or code attributes) to handle the incoming event payload.
+
+
+
+
+event grid:
+event grid will notify event to services.
+
+example:
+file uploaded into Blob then event grid notify a file uploaded to the services.
+
+services are azure functions
+			 webhook
+			 service bus queue
+			 event hub
+
+event grid has only url of file not the data.
+
+
+file uploaded --> event grid ---> azure functions
+			 					  webhook
+			 					  service bus queue
+			 					  event hub
+
+
+terminology in event grid:
+event source  --> storage account
+event 		  --> file uploaded
+event subscription --> payment service or order service.
+subscribe service (payment want this event) her payment is the subscriber
+event handler   --> azure functions, webhook .....
+topic --> event published into topic.
+
+
+
+Alternative approach:
+file uploaded --> azure function + blobtrigger & azure function + servicebus trigger.
+
+or EventGrid trigger + azure function.
+
+
+
+Event grid trigger works along with azure functions.
+Once a file is uploaded into blob storage, blob storage publisher create an event with file name, path and some information.
+notify to event grid, event grid deliver to the azure functions.

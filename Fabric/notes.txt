@@ -987,3 +987,98 @@ so no Lakehouse catalog metadata exists for it. If the data is registered as a D
  metadata is maintained at the Lakehouse catalog, Delta transaction log and Parquet file levels. 
  spark.catalog primarily reads the Lakehouse catalog metadata. When Spark reads the table, 
  it then uses the Delta log and Parquet metadata to process the data.
+
+
+
+semantic models in fabric:
+n Microsoft Fabric, a semantic model is the business-friendly data model that sits on top of your data and is mainly used by Power BI for reporting and analytics.
+Think of the flow like this:
+
+Lakehouse / Warehouse
+        ↓
+Semantic Model
+        ↓
+Power BI Report
+
+
+
+Your Lakehouse or Warehouse may contain technical tables such as:
+fact_sales
+dim_customer
+dim_product
+dim_date
+
+The semantic model organizes those tables into something easier for report users to understand.
+For example:
+fact_sales
+-----------
+customer_id
+product_id
+sale_date
+quantity
+amount
+
+dim_customer
+------------
+customer_id
+customer_name
+region
+
+dim_product
+-----------
+product_id
+product_name
+category
+
+Inside the semantic model, you define relationships such as:
+dim_customer.customer_id
+        ↓
+fact_sales.customer_id
+
+dim_product.product_id
+        ↓
+fact_sales.product_id
+
+Then you can create measures like:
+Total Sales =
+SUM(fact_sales.amount)
+
+and:
+Total Orders =
+DISTINCTCOUNT(fact_sales.order_id)
+
+Now a Power BI report user does not need to write SQL against the Warehouse. They can simply use:
+Customer Name
+Region
+Product Category
+Total Sales
+Total Orders
+
+The semantic model provides the business meaning.
+It can contain:
+Tables
+Relationships
+Measures
+Calculated columns
+Hierarchies
+Formatting
+Security rules
+Business-friendly names
+
+For example, instead of exposing:
+cust_id
+txn_amt
+prod_cat_cd
+
+you can expose:
+Customer ID
+Sales Amount
+Product Category
+
+So the easiest way to remember it is.
+
+
+
+
+Once these semantic models are developed, business user will directly pull information and generate report.
+instead of requesting developer to generate a report.

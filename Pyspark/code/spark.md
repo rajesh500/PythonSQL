@@ -4930,3 +4930,11 @@ One caveat: the ~600 MB from a 1 GB executor is only a simplified teaching examp
 
 
 
+Spark job frequently calls garbage collector and executor failures.
+how would you check and fix it.
+
+I would check executor memory usage, GC time, task size, shuffle/spill metrics, partition sizes, data skew, caching, broadcast joins, and executor-loss logs. Frequent GC usually means executors are spending too much time trying to free JVM heap. I would fix the root cause by reducing partition size, increasing parallelism, removing unnecessary cache, avoiding oversized broadcasts, fixing skew, reducing data before joins/aggregations, and only then consider increasing executor memory.
+
+
+increase parallelism means increasing core in the executor or a cluster level.
+if cores increase means no of tasks also increases.
