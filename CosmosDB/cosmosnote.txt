@@ -1,0 +1,577 @@
+When you create an Azure Cosmos DB account using the Core API (also widely known as the NoSQL API or SQL API), 
+you are creating a fully managed, cloud-native NoSQL document database.
+
+Here is what you need to know about this specific database type:
+• Data Format: It stores data natively as JSON documents. This means it is schema-agnostic, 
+				allowing you to store flexible, semi-structured data without defining rigid tables and columns beforehand.
+• Query Language: Even though it is a NoSQL database, you use a custom, familiar SQL-like syntax to query your JSON documents. 
+					This gives developers who already know relational SQL a very smooth learning curve.
+• Hierarchy: Within the database account, you create Databases, which act as namespaces. Inside those databases, 
+				you create Containers (similar to relational tables) to hold your JSON documents (similar to rows).
+• Key Strengths: It offers automatic indexing of all properties, single-digit millisecond response times, and turn-key global replication
+
+
+
+API:
+NoSQL (core api)
+Mongo DB
+Cassandra
+Gremlin
+Azure table
+
+ 
+data model:
+key-value pair (Azure Table)
+document (Mongo DB)
+graph (gremlin)
+column Family  (Cassandra)
+
+ 
+
+pros of cosmos DB for NoSQL:
+Guaranteed speed at any scale
+fast, flexible app development
+ready for mission-critical applications
+fully managed, cost-effective serverless database.
+
+
+When azure cosmos DB for NoSQL suited?
+unpredictable spikes & dips in traffic
+generate lots of data
+real-time user experiences
+business continuity.
+ 
+ 
+
+Components:
+Account
+database1                         database2
+container1         container 1  container 2
+item
+
+ 
+
+container is table
+item is row
+
+  
+
+Azure Cosmos DB is a distributed, NoSQL operational database designed for real-time transactional processing (OLTP).
+
+You would use Cosmos DB instead of Iceberg when your application requires sub-millisecond lookups, instant updates, and operational database features rather than large-scale batch analytics.
+
+ 
+
+Core Structural Differences
+Feature                						Apache Iceberg               			Azure Cosmos DB
+Primary Use Case          				Large-scale analytics (OLAP)   			Real-time apps & transactions (OLTP)
+Query Latency  							Seconds to minutes      				Single-digit milliseconds
+Throughput Focus          				High throughput for massive scans       High concurrency for point reads/writes
+Data Modifications        				High-cost metadata/file rewrites        Instant item-level updates and inserts
+API Ecosystem 							SQL engines (Spark, Trino, Flink)       NoSQL, MongoDB, Cassandra, Gremlin
+
+ 
+
+Backup Policy:
+Periodic
+Continuous (7 days)
+Continuous (30 days)
+Back interval (example 6 hours, every 6 hours backup will taken)
+Backup retention (no of days)
+
+
+ 
+keys:
+read-write keys  read only keys
+primary key and secondary key.
+
+ 
+
+Capacity mode:
+provision throughput
+serverless
+RU (Request unit)
+
+ 
+
+Container also has the separate provision throughput.
+database level provision throughput is not applicable at container level if select provision throughput at container level.
+
+ 
+
+database level provision throughput is shared by all available container in the database.
+
+
+Provisioned throughput: 
+Provisioned throughput means the processing capacity you reserve for Cosmos DB to handle reads, writes, and queries. It is measured in Request Units per second (RU/s).
+- RU: The amount of work an operation consumes.
+- RU/s: The amount of work Cosmos DB can handle each second.
+ 
+
+Partition key:
+unique key:
+
+ 
+
+Request units:
+compute resource allocation for DB queries.
+
+ 
+
+• 1 RU is exactly equal to a point read (fetching by ID and partition key) of a 1 KB item.
+
+
+Common RU Estimates by Operation
+
+ 
+The actual RU cost varies based on the size of the item and operation complexity:
+Operation Type Description / Basic Baseline    				 				Typical Cost (1 KB item)
+Point Read         Fetching a single item by id and partition key.   				~1 RU
+Insert / Write     Creating a new item (includes indexing).            				~5 RUs
+Update / Upsert     Modifying an existing item.        								~5 RUs
+Query   			Searching with filters or cross-partition logic.  				10 to 100s+ RUs
+
+ 
+
+ 
+
+Throughput:
+How many requests a database can handle per second
+
+unit of throughput: RU
+Each container is a unit of scalability for both throughput and storage.
+
+ 
+
+you can provision throughput at either or both the database and container levels
+1. container level
+2. Database level
+3. Mixed  (RU at Database level not at container level then RU shared by all the containers and with in the same database a container has its own RU then it will not used DB level RU's).
+
+ 
+
+single vs cross partition:
+fetch the data from single partition --> where city = 'Dallas'
+fetch the data from multiple partition --> where name = 'John'
+
+
+Hot Partition:
+A hot partition in Cosmos DB occurs when one partition receives much more read/write work than others, exhausting its available throughput while others still have capacity.
+
+Example:
+Logical partition	Requests per second
+C101					5,000
+C102					50
+C103					30
+C104					20
+
+Most requests target C101. This makes C101 a hot logical partition.
+
+Imagine a container with manual provisioned throughput of 12,000 RU/s, distributed across three physical partitions:
+Physical partition			Available throughput				Requested workload
+P1 — contains C101				4,000 RU/s						6,000 RU/s
+P2								4,000 RU/s						500 RU/s
+P3								4,000 RU/s						500 RU/s
+
+
+The total workload is only 7,000 RU/s, below the container’s 12,000 RU/s.
+However, P1 needs 6,000 RU/s and has only 4,000 RU/s. It can throttle while P2 and P3 remain underused. A logical partition’s data stays together on one physical partition, so that hot key cannot simply spread across all three.
+
+
+Resolution:
+For example, instead of putting every C101 order under "C101", a redesigned key could distribute orders across buckets:
+C101-0
+C101-1
+C101-2
+C101-3
+
+These become separate logical partitions that Cosmos DB can distribute. The tradeoff is that retrieving all C101 orders now requires querying multiple buckets.
+
+If the data is distributed across multiple partition then it works as cross partition.
+Cross-partition queries can execute in parallel, so they are not always slower. If the original partition was heavily throttled, spreading the workload may improve response times despite the extra query work.
+
+
+
+Time to Live (TTL):
+Time to Live (TTL) in Azure Cosmos DB is a built-in feature that automatically deletes items from a container after a designated period. It evaluates expiration in seconds as a delta from the item's last modified timestamp (_ts).
+The system manages deletions automatically in the background using spare Request Units (RUs) for provisioned throughput accounts, ensuring you don't need to write custom cleanup scripts or manual sweep queries.
+
+
+ 
+
+TTL define at container level or items level.
+deletion will be by using RU's only but it consume left over RU's.
+
+ 
+
+TTL properties:
+off  (default) no delete
+on (no default) deletion on items level not yet container. delete it but no configuration.
+on  container level and applies to all items in the container.
+
+ 
+Using TTL if any item you don't want to delete 
+For each item, set the item.ttl property to -1
+For each item, set the item.ttl property to 0 -- delete immediately
+
+
+## serverless vs provisioned throughput:
+varying data size    minimal variance on predictable traffic
+can run only in single region      unlimited regions
+unlimited data store                     50GB data store in container
+
+ 
+## Logical partition and partition key:
+In Azure Cosmos DB for NoSQL, a partition key determines how documents are grouped, and a logical partition is one of those groups.
+Suppose you create an orders container and select:
+Partition key path: /customer_id
+
+You insert these documents:
+id	customer_id	amount
+O1	C101	100
+O2	C102	200
+O3	C101	300
+O4	C103	400
+O5	C102	500
+
+
+Cosmos DB automatically groups documents with the same customer_id value into the same logical partition. Microsoft Learn
+Logical partition	Documents inside it
+C101					O1, O3
+C102					O2, O5
+C103					O4
+
+
+
+
+## transactional batch:
+In Cosmos DB for NoSQL, grouping multiple point operations together is called a transactional batch.
+You can combine document creates, reads, updates, and deletes into one transaction. All operations commit together, or all changes are rolled back if any operation fails. They must target the same container and the same partition key value. Microsoft Learn
+For example, your orders container uses /customerId as its partition key:
+Operation	Document ID	Partition key value
+Create an order	ORD103	C101
+Update an order’s status	ORD101	C101
+Delete an order	ORD102	C101
+
+
+These operations can share one transactional batch because every document belongs to customer C101’s logical partition.
+Python example
+Assume container is your connected orders container client, ORD101 and ORD102 already exist under C101, and ORD103 does not exist.
+from azure.cosmos import exceptions
+
+new_order = {
+    "id": "ORD103",
+    "customerId": "C101",
+    "product": "Monitor",
+    "quantity": 1,
+    "status": "New"
+}
+
+batch_operations = [
+    # Operation 1: Create
+    ("create", (new_order,)),
+
+    # Operation 2: Update selected fields
+    ("patch", (
+        "ORD101",
+        [
+            {
+                "op": "set",
+                "path": "/status",
+                "value": "Shipped"
+            }
+        ]
+    )),
+
+    # Operation 3: Delete
+    ("delete", ("ORD102",))
+]
+
+try:
+    results = container.execute_item_batch(
+        batch_operations=batch_operations,
+        partition_key="C101"
+    )
+
+    print("All operations committed")
+
+except exceptions.CosmosBatchOperationError as error:
+    print(
+        f"Operation {error.error_index + 1} failed. "
+        "No changes from this batch were committed."
+    )
+
+
+The Python SDK accepts a list of operation tuples and executes them in the specified order. Microsoft Learn
+What happens if the last operation fails?
+Suppose ORD102 does not exist, so the delete fails:
+Operation	Final result
+Create ORD103	Rolled back; the new order is not saved
+Update ORD101	Rolled back; its previous status remains
+Delete ORD102	Fails because the document is missing
+
+
+
+fields created in the item along with our columns:
+ "_rid": "smU1AN2ndr4DAAAAAAAAAA==",
+ "_self": "dbs/smU1AA==/colls/smU1AN2ndr4=/docs/smU1AN2ndr4DAAAAAAAAAA==/",
+ "_etag": "\"020007ef-0000-0800-0000-6acd73470000\"",
+ "_attachments": "attachments/",
+ "_ts": 1791849287
+
+
+
+You can also execute queries through SDKs such as Python, .NET, Java, and JavaScript.
+
+
+
+
+Indexing: (index policy)
+Index policy is defined at container level
+
+index policy code:
+{
+    "indexingMode": "consistent",
+    "automatic": true,
+    "includedPaths": [
+        {
+            "path": "/*"
+        }
+    ],
+    "excludedPaths": [
+        {
+            "path": "/\"_etag\"/?"
+        }
+    ],
+    "fullTextIndexes": []
+}
+
+
+by default all the fields are indexed.
+excluded fields define in the excluded paths.  __etag is default excluded.
+
+Do the indexing on filtering fields, join fields.
+if we do indexing, RU used in the query is less.
+without indexing on field RU consumption is very high
+
+Example:
+indexed field takes 2.8 RU's per the query
+without index on field, if we do query it will take 20 RU's.
+
+
+includedPaths": [
+        {
+            "path": "/price"
+        } ]
+
+excludedPaths": [
+        {
+            "path": "/*"
+        }
+
+* excluding fields from indexing increasing query performance and consumption of RU is less.
+
+
+
+Types of indexes:
+1. Range index
+2. Composite index
+3. Spatial index
+4. Full text index
+5. Vector index
+
+
+Imagine your Cosmos DB container has 1 million product documents. You want products costing more than ₹500:
+SELECT *
+FROM c
+WHERE c.price > 500
+
+Without a usable index: Cosmos DB may need to read every document and check its price.
+With a price index: Cosmos DB uses a separate lookup structure to locate matching documents. It then reads the documents needed for the result.
+An index is like the index at the back of a book: you look up a topic and find its pages instead of reading the whole book.
+Consider these four documents:
+Document	Category	Price
+P1	Electronics	500
+P2	Electronics	900
+P3	Furniture	700
+P4	Electronics	300
+
+
+1. Range index — look up values of a field
+Think of the price index as this ordered lookup:
+Price	Document
+300	P4
+500	P1
+700	P3
+900	P2
+
+
+For WHERE c.price > 500, Cosmos DB can locate the entries 700 and 900, which identify P3 and P2.
+A range index also helps with:
+WHERE c.price = 500
+
+ORDER BY c.price
+
+You normally get these indexes automatically for string and number fields under the default indexing policy.
+
+2. Composite index — look up a combination of fields
+Suppose you want products sorted by category first, then price within each category:
+SELECT *
+FROM c
+ORDER BY c.category ASC, c.price ASC
+
+Think of the composite index as this combined lookup:
+Category + price	Document
+Electronics, 300	P4
+Electronics, 500	P1
+Electronics, 900	P2
+Furniture, 700	P3
+
+
+It keeps the combination in the order needed by your query.
+Having separate indexes for category and price does not replace this combined index for a multiple-field ORDER BY. You must configure the matching composite index.
+
+
+3. Spatial index — look up geographic locations
+Imagine each store document contains its location.
+Your question is:
+“Which stores are within 5 kilometres of my location?”
+
+A spatial index helps Cosmos DB find nearby locations efficiently. It is useful for stores, delivery vehicles, and location-based applications.
+
+4. Full-text index — look up words in text
+Imagine these descriptions:
+P1: Wireless headphones
+P2: Gaming monitor
+P4: Wireless mouse
+
+Your question is:
+“Which descriptions contain the word wireless?”
+
+A full-text index helps find P1 and P4 using text-search functions. It analyzes text into searchable terms. 
+
+5. Vector index — look up similar meaning
+Your search is:
+“Headphones without cables”
+
+The document says:
+“Wireless headphones”
+
+The wording differs, but the meaning is similar. An embedding model converts the text into numerical vectors, and a vector index helps find similar vectors. It does not understand the words directly. 
+
+Remember the types by the question you are asking:
+Your question									Index
+Which products cost more than 500?				Range
+Sort by category, then price					Composite
+Which stores are nearby?						Spatial
+Which descriptions contain “wireless”?			Full-text
+Which descriptions mean something similar?		Vector
+
+
+
+
+
+
+Azure services to connect with cosmosDB:
+Azure Cosmos DB can integrate with Azure services for data movement, real-time processing, analytics, search, and application development. The following examples use Cosmos DB for NoSQL.
+Service									How it integrates											Example
+Azure Data Factory			Cosmos DB connector reads and writes documents							Copy orders from Cosmos DB to ADLS
+Azure Databricks			Cosmos DB Spark connector reads and writes data							Clean orders and store them as Delta tables
+Azure Functions				Cosmos DB trigger processes changes; bindings read/write documents		Process a newly created order
+Azure Logic Apps			Cosmos DB connector performs workflow operations						Run a business workflow when data changes
+Microsoft Fabric			Mirroring replicates operational data into OneLake						Analyze orders without building a custom copy pipeline
+Azure AI Search				Cosmos DB indexer populates a search index	Search product descriptions
+Azure Event Hubs			Application or Function forwards changes to messaging services			Publish order events to downstream consumers 
+/ Service Bus	
+
+
+
+
+Replication:
+Geo-replication --> multiple region
+zone replication --> in single region multiple zones
+
+RU's calculation for multiple regions.
+Example: one is primary region and 2 are secondary regions.
+primary region has 1000 RU's
+
+the total calcuation is 1000 * (1+2) = 3000 RU charge.
+
+
+Manual Failover: Simulation of below scenario manually.
+Service Managed Failover. 
+if one region goes out secondary region should make as primary region.
+
+
+
+Consistency models:
+Strong (Same data, same order will minimal latency)
+When we write data into primary region, other region will see the data immedatiely with minimal latency.
+Bounded Staleness  one region with minimal latency other region lags
+Session (default) consistency with in session
+Consistent prefix: delay in the records as well but data is not out of order
+Eventual: lag, out of order.
+
+
+
+Which indexing policy setting in Azure Cosmos DB consumes the least request units (RUs) when writing data?
+
+No index policy (set to None) will consume less RU for write operations.
+
+Write heavy workloads into Azure Cosmos DB?
+customize the indexing policy to include only relevant fields
+
+
+
+hierarchical partition:
+A hierarchical partition key in Cosmos DB for NoSQL uses multiple fields in a defined order to partition documents.
+
+Example:
+| Order | company_id | customer_id |
+|---|---|---|
+| O1 | CompanyA | C101 |
+| O2 | CompanyA | C101 |
+| O3 | CompanyA | C102 |
+| O4 | CompanyB | C101 |
+
+
+regular partition on company_id
+
+| Logical partition | Orders |
+|---|---|
+| CompanyA | O1, O2, O3 |
+| CompanyB | O4 |
+
+
+hierarchial partition on company_id and customer_id
+then 
+| Full partition-key value | Orders |
+|---|---|
+| `["CompanyA", "C101"]` | O1, O2 |
+| `["CompanyA", "C102"]` | O3 |
+| `["CompanyB", "C101"]` | O4 |
+
+If we query
+SELECT *
+FROM c
+WHERE c.company_id = "CompanyA"
+  AND c.customer_id = "C101"
+
+  it will go to one logical partition.
+
+
+Synthetic partition:
+Synthetic partition keys are created by concatenating multiple properties (e.g., Customer ID + Product ID)
+
+
+
+
+
+
+
+
+
+
+
+ 
+

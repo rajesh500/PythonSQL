@@ -424,6 +424,10 @@ Causes:
 High Partition Count / Low Data Volume: 
 Spark often defaults to 200 shuffle partitions (spark.sql.shuffle.partitions), which is suitable for large datasets but creates 200 small files if the dataset is only a few megabytes.
 
+Increase or decrease shuffle partitions:
+Spark.conf.set(“spark.sql.shuffle.partitions”,1000)   assigning number of partitions.
+No of partitions based on no of cores in executors
+
 Streaming/Micro-batching: 
 In Structured Streaming, every micro-batch writes new files. If the trigger interval is short, thousands of tiny files are created hourly.
 Over-Partitioning (partitionBy): 
@@ -1616,8 +1620,8 @@ Total executors - 18
 Each Executor memory - 34GB
 
 
-Spark.conf.set(“spark.sql.shuffle.partitions”,1000)   assigning number of partitions.
-No of partitions based on no of cores in executors
+
+
 
 
 

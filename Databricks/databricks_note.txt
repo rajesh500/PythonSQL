@@ -380,8 +380,64 @@ Serverless Compute: Fully managed by Databricks. You do not configure nodes or w
                      Databricks instantly allocates resources and charges you purely for active execution time.
 
 
+## cluster sizes:
+| Worker type | Workers setting | Worker machines |
+|---|---:|---:|
+| `Standard_E16ds_v5` | 2 | **2** |
+| `Standard_E16ds_v5` | 4 | **4** |
+| `Standard_E16ds_v5` | 8 | **8** |
 
-Liquid Clustering:
+
+
+
+| Component | What it is | What it does |
+|---|---|---|
+| **Worker** | A virtual machine with CPU and RAM | Provides the computing resources |
+| **Executor** | A Spark process running inside the worker | Uses those resources to execute tasks |
+| **Task** | A unit of work | Processes one data partition within a stage |
+| **Driver** | The coordinating Spark process | Plans the work and assigns tasks to executors |
+
+
+Standard_D4ds_v5. start with D is general purpose 
+
+
+standard_E16ds_v5.  starts with E is memory optimized 
+Worker nodes selection, during creating of a cluster and select the cluster size down can define min and max workers.
+let min2 and max 4 
+4 workers nodes and 1 driver node totally, 5 worker nodes
+
+
+VM type				vcpus 	RAM 		Family
+Standard_D4ds_v5	4		16 GB	General purpose     D CPUs * 4 (4*4) = 16GB RAM size
+Standard_D8ds_v5	8		32 GB	General purpose		D CPUs * 8 (8*4) = 32GB RAM size
+Standard_D16ds_v5	16		64 GB	General purpose
+Standard_E4ds_v5	4		32 GB	Memory optimized	D CPUs * 8 (4*8) = 32GB RAM size
+Standard_E4ds_v5	4		32 GB	Memory optimized
+Standard_E8ds_v5	8		64 GB	Memory optimized
+Standard_E16ds_v5	16		128 GB	Memory optimized
+Standard_E32ds_v5	32		256 GB	Memory optimized
+Standard_E64ds_v5	64		512 GB	Memory optimized
+
+
+vCPUs stands for virtual central processing units
+Spark discussions, you can think of them as 16 CPU cores available to each worker node. Technically, they are virtual CPUs, not necessarily 16 physical cores.
+
+
+
+Standard_E16ds_v5	16		128 GB	Memory optimized
+workers 4 
+driver 	1
+total 16 cores for worker node, which is 16*5 = 80 total cores
+128GB for worker, which is 128*5 = 640GB of total workers 
+
+
+
+you can think of the driver node as the coordinating or “master” node in a Databricks cluster.
+- Driver: Runs your main application, plans execution, and schedules tasks.
+- Workers: Run executors that process those tasks.
+
+
+## Liquid Clustering:
 Liquid Clustering is a modern data layout optimization feature in Delta Lake that replaces many traditional uses of partitioning and Z-Ordering. 
 It allows Delta tables to continuously reorganize data based on clustering keys without requiring static partitions.
 
@@ -2636,6 +2692,18 @@ Load data into adls and use autoloader to load data from adls to bronze.
 
 
 
+why cloudFiles in autoloader or readstream:
+Incremental File Tracking:
+It automatically tracks which files have been processed using a stateful 
+RocksDB key-value store in your checkpoint location, guaranteeing exactly-once ingestion without manual tracking
+
+Scalability for Billions of Files: 
+Standard Spark format('parquet'/'json') has to list entire directories to 
+find new files, which slows down massively at scale. 
+cloudFiles scales efficiently to discover billions of files.
+
+
+
 
 ### copy into:
 It is also used to copy data from files into delta table.
@@ -3985,9 +4053,66 @@ Databricks Documentation
 SELECT * is not enough when you want evaluated measures. You must explicitly list dimensions and wrap measures appropriately
 
 
+###############################################################
+## cluster information:
+| Worker type | Workers setting | Worker machines |
+|---|---:|---:|
+| `Standard_E16ds_v5` | 2 | **2** |
+| `Standard_E16ds_v5` | 4 | **4** |
+| `Standard_E16ds_v5` | 8 | **8** |
 
 
 
+
+| Component | What it is | What it does |
+|---|---|---|
+| **Worker** | A virtual machine with CPU and RAM | Provides the computing resources |
+| **Executor** | A Spark process running inside the worker | Uses those resources to execute tasks |
+| **Task** | A unit of work | Processes one data partition within a stage |
+| **Driver** | The coordinating Spark process | Plans the work and assigns tasks to executors |
+
+
+Standard_D4ds_v5. start with D is general purpose 
+
+
+standard_E16ds_v5.  starts with E is memory optimized 
+Worker nodes selection, during creating of a cluster and select the cluster size down can define min and max workers.
+  let min2 and max 4 
+4 workers nodes and 1 driver node totally, 5 worker nodes
+
+
+VM type				vcpus 	RAM 		Family
+Standard_D4ds_v5	4		16 GB	General purpose     D CPUs * 4 (4*4) = 16GB RAM size
+Standard_D8ds_v5	8		32 GB	General purpose		D CPUs * 8 (8*4) = 32GB RAM size
+Standard_D16ds_v5	16		64 GB	General purpose
+Standard_E4ds_v5	4		32 GB	Memory optimized	D CPUs * 8 (4*8) = 32GB RAM size
+Standard_E4ds_v5	4		32 GB	Memory optimized
+Standard_E8ds_v5	8		64 GB	Memory optimized
+Standard_E16ds_v5	16		128 GB	Memory optimized
+Standard_E32ds_v5	32		256 GB	Memory optimized
+Standard_E64ds_v5	64		512 GB	Memory optimized
+
+
+vCPUs stands for virtual central processing units
+Spark discussions, you can think of them as 16 CPU cores available to each worker node. Technically, they are virtual CPUs, not necessarily 16 physical cores.
+
+
+
+Standard_E16ds_v5	16		128 GB	Memory optimized
+workers 4 
+driver 	1
+total 16 cores for worker node, which is 16*5 = 80 total cores
+128GB for worker, which is 128*5 = 640GB of total workers 
+
+
+
+you can think of the driver node as the coordinating or “master” node in a Databricks cluster.
+- Driver: Runs your main application, plans execution, and schedules tasks.
+- Workers: Run executors that process those tasks.
+
+
+
+################################################################
 ## Event Hub:
 Event: an order is placed it is an event.
 event is captured in JSON format in the eventhub.
@@ -4315,6 +4440,796 @@ Keep the same application ID for the same checkpoint; choose a new application I
 try, except in the streaming pipeline is same as python.
 
 from_json() parses JSON already inside a DataFrame column. .option("multiLine", True) controls how Spark reads a JSON file.
+
+
+
+
+
+
+
+
+
+#####################################################################
+Structured Streaming:
+
+works:
+
+input streaming	--> spark streaming (micro batches) -> spark engine (processes batch) --> output.
+
+
+awaitTermination():
+if streaming application is running and no data as of the moment, driver still connect to the executor if we use awaittermination() without stoping it.
+
+streaming output modes:
+complete	()
+append (data adding previous data locked)
+ 	Only the new rows added to the result table since the last trigger are written to the sink.
+update (won't work for files, works for DB, delta table...)
+
+Example:
+Micro-batch	Input	Complete output	Update output
+M1	owl cat	owl = 1, cat = 1	owl = 1, cat = 1
+M2	dog cat	owl = 1, cat = 2, dog = 1	cat = 2, dog = 1
+M3	tiger dog	owl = 1, cat = 2, dog = 2, tiger = 1	dog = 2, tiger = 1
+
+
+
+(stateless operations like select, filter, map, or stateful operations with watermarks where older results are finalized).
+
+
+SparkSession.builder.appName("Streaming pipeline").
+config("spark.streaming.stopGracefullyOnShutdown", True)
+.master()..
+
+
+config("spark.streaming.stopGracefullyOnShutdown", True)
+whenever we shutdown streaming application, it process inline data and stop streaming.
+
+
+spark.conf.set("spark.sql.streaming.schemaInference", True)
+is like pyspark inferSchema.
+
+
+
+if the source if files, after reading source what to do with source files:
+• Delete processed files: .option("cleanSource", "delete") removes the source files immediately after they are processed.
+• Archive processed files: .option("cleanSource", "archive") moves the files to an archive directory (requires setting .option("sourceArchiveDir", "path/to/archive")).
+• Disable cleanup: .option("cleanSource", "off") leaves the source files untouched (default behavior).
+
+spark.readStream.optiom("cleanSource", "delete/archive/off") 
+off is default.
+archive provide location
+
+.option("maxFilesPerTrigger", 1/2/3...) micro batches process 1 file at a time 
+If this option is not provided it read as many files as from source path.
+
+
+checkpoint:
+In checkpoint location totally contains 5 to 6 files get created
+/Volumes/rajeswariade/bronze/my_managed_volume/checkpoint/eventhub_orders_cp/__tmp_path_dir/
+/Volumes/rajeswariade/bronze/my_managed_volume/checkpoint/eventhub_orders_cp/commits/
+/Volumes/rajeswariade/bronze/my_managed_volume/checkpoint/eventhub_orders_cp/metadata/
+/Volumes/rajeswariade/bronze/my_managed_volume/checkpoint/eventhub_orders_cp/offsets/
+/Volumes/rajeswariade/bronze/my_managed_volume/checkpoint/eventhub_orders_cp/sources/
+/Volumes/rajeswariade/bronze/my_managed_volume/checkpoint/eventhub_orders_cp/state/
+
+
+
+In Spark Structured Streaming, checkpointing is the mechanism that guarantees fault tolerance and exactly-once processing semantics.
+When you specify a checkpoint location (.option("checkpointLocation", "/path")), 
+Spark creates a directory structure containing metadata that tracks exactly what data has been read, 
+what is currently being processed, and what has been successfully written.
+
+📂 The Checkpoint Directory Structure
+Inside your checkpoint folder, Spark manages several key subdirectories. The three most critical components are the offsets, commits, and metadata:
+text
+checkpointDirectory/
+├── metadata             # Unique ID for the streaming query
+├── offsets/             # WAL (Write-Ahead Log) of source offsets to process
+│   ├── 100				 # here 0 and 1 are the micro-batches
+│   ├── 1
+├── commits/             # Log of successfully completed micro-batches
+│   ├── 0
+│   ├── 1
+└── sources/ / state/    # State data for stateful operations (like aggregations)
+
+offset and commits will have the same batch number.
+offset will pick the data first, let say in kafka topic it has 6 partitions
+in each partition it has offset start and end positions. which means record starting number and ending number.
+
+
+🔄 How Offsets and Commits Work Together (Step-by-Step)
+Spark Structured Streaming operates in an execution loop (usually micro-batches). Here is how a single micro-batch uses offsets and commits:
+
+1. Triggering the Batch & Writing the Offset
+• When a new micro-batch begins (e.g., Batch 0), Spark queries the streaming source (like Kafka or a cloud folder) to find out what new data is available.
+• Spark gets the latest available offset range (e.g., Kafka offsets 100 to 200).
+• The Offset Log: Before Spark even starts processing the data, it writes this target offset range into a file named offsets/0. This acts as a Write-Ahead Log (WAL).
+
+2. Executing the Batch
+• Spark reads the data corresponding to the offsets in offsets/0.
+• It runs your transformations (filters, maps, joins).
+• It pushes the output data to your configured sink (e.g., a Delta Lake table).
+
+3. Finalizing the Batch & Writing the Commit
+• Once the sink confirms that the data for Batch 0 has been successfully and durably written, Spark finishes the micro-batch.
+• The Commit Log: Spark writes an empty file or a small metadata file named commits/0. This file is the receipt proving that Batch 0 is completely finished.
+
+🛠️ How Failure Recovery Works (The Self-Healing Loop)
+If your streaming application crashes mid-execution, Spark uses the offsets and commits logs to pick up exactly where it left off upon restart:
+1. Scanning the Logs: Spark looks at the offsets/ folder and the commits/ folder and compares the highest numbers.
+2. Detecting Unfinished Work:
+	• If the highest offset is offsets/5 and the highest commit is commits/5, the stream was stopped cleanly. Spark will safely move on to fetch offsets for Batch 6.
+	• If the highest offset is offsets/5 but the highest commit is only commits/4, Spark knows that Batch 5 started but never finished successfully.
+3. Re-executing the Failed Batch: Spark reads the exact offset range specified in offsets/5 and re-runs Batch 5.
+
+
+💡 How Exactly-Once is Achieved
+Because Spark re-runs the exact same offsets upon failure, it relies on the sink to handle potential duplicates:
+• Delta Lake Sinks: Delta Lake uses transaction logs. It notices that Batch 5 is trying to write again, 
+checks its own transaction history, and handles the replay idempotently, ensuring exactly-once data delivery.
+• Idempotent Sinks: If you use a sink that does not support transactional commits, re-running the batch might result in at-least-once processing (duplicate records in the sink).
+
+
+
+Metadata: contain the query UUID ( a UUID is created for every query).
+based on UUID and commit batch information we should know that batch is commited or not.
+
+
+Never delete or modify this file manually. If you delete the metadata file but leave the offsets and commits
+ folders behind, Spark will fail to recognize the checkpoint directory on restart, assume it is corrupted, and crash.
+
+
+State: if we are doing aggregation, the aggregated result information is stored in the state file and pass it to the next batches.
+Example:
+batch 1:
+customer ID 101  amount 300
+customer iD 102  amount 50
+
+aggreation information
+customer ID 	amount
+101 			300
+102 			50 
+
+batch2:
+101 		50
+103			100
+
+aggregate information:
+customer ID 	amount
+101 			350
+102 			50
+103 			100
+
+
+The state remembers each customer’s running total. Spark reuses that state in the next batch and saves it under the checkpoint’s state/ directory for recovery. It can contain multiple files, rather than one state file. Microsoft Learn
+After batch 1, the state contains:
+Customer ID	Saved total
+101	300
+102	50
+
+
+When batch 2 arrives, Spark combines its new amounts with the saved totals:
+Customer ID	Previous state	New amount in batch 2	Updated state
+101	300	50	350
+102	50	No new record	50
+103	No previous entry	100	100
+
+
+So:
+- 101: Spark retrieves the saved 300, adds 50, and saves 350.
+- 102: Its total stays 50 because batch 2 has no new record for it.
+- 103: Spark creates a new state entry with 100.
+Spark carries the saved totals forward; it does not need to reread batch 1’s input to calculate these totals.
+If the stream stops after batch 1, restarting with the same valid checkpoint restores 101 → 300 and 102 → 50, allowing batch 2 to continue the calculation. Microsoft Learn
+One distinction: your final table shows the full aggregation state. The output depends on the output mode:
+Output mode	Rows emitted after batch 2
+Complete	All three customers: 101, 102, 103
+Update	Changed customers: 101 and 103; customer 102 still remains in state.
+
+
+state file maintain aggregate information as one file.
+ex: batch 1 aggregate information in the state file
+batch 2 combine previous and current information. Now latest updated aggregate information only contain in the file.
+Not both current and previous aggregate information.
+
+
+Fail scenario's:
+1. offset batch 5 is created, but during commit failed. commit has batch 4 on restart batch 5 will be reprocessed again.
+2. offset batch is deleted but commit has the same batch. Now new micro-batch triggered, since offset batch and commit batches are not matching
+which result as That leaves a damaged checkpoint. Restart can fail or attempt incorrect recovery; “it will always fail” is too absolute.
+This has to be fixed.
+Example:
+offset 5 is deleted after commit batch 5 is created sucessfully.
+on rerun the pipeline, offset has 4 but commit has batch 5 which is incorrect.
+so doesn't know the batch 5 offset end position. so batch 6 will not start with out knowing the end position of previous batch.
+Finally pipeline will with checkpoint corrupted etc...
+
+
+
+Stateful vs Stateless:
+Stateful streaming remembers information from earlier batches to process new data. Stateless streaming processes each record without needing earlier batches’ calculation results. Microsoft Learn
+Think of state as memory used by your processing logic.
+Stateful example: your running customer total
+Suppose orders is a streaming DataFrame:
+totals = orders.groupBy("customer_id").sum("amount")
+
+
+Spark maintains the running sum for each customer:
+Customer ID	Batch 1 amount	Batch 2 amount	Total after batch 2
+101	300	50	350
+102	50	No new record	50
+103	No record	100	100
+
+
+When batch 2 brings 101 → 50, Spark retrieves the previously saved 101 → 300, adds 50, and updates the state to 350.
+This is stateful because processing batch 2 needs the total saved from batch 1.
+Spark checkpoints this aggregation state so it can restore the totals after a restart. Microsoft Learn
+Stateless example: keep records whose amount is at least 100
+filtered_orders = orders.filter("amount >= 100")
+
+
+Each incoming record is checked independently:
+Batch	Incoming record	Result
+1	Customer 101, amount 300	Keep
+1	Customer 102, amount 50	Drop
+2	Customer 101, amount 50	Drop
+2	Customer 103, amount 100	Keep
+
+
+In batch 2, customer 101’s new amount is 50, so Spark drops that record. It does not combine it with the earlier 300 to evaluate this filter.
+This is stateless because the filter only needs the current record.
+Common examples are:
+Stateless operations	Stateful operations
+Filter rows	Running sums, counts, averages
+Select or rename columns	Deduplicate across batches
+Calculate a column from the current row	Join two streams while retaining records for matching
+
+
+
+
+read --> batch
+readStream --> streaming 
+
+in read.option("startingOffsets", "earliest")
+.option("endingOffsets", "latest"). --> is used for only batch read because once file read is completed
+it end the offset value. so it is not useful in readStream (because of if offset end rest of the file process won't be done)
+
+
+
+bronze to silver data process in streaming only. no need to process batches wise.
+create a separate checkpoint, it will handle failure, restart and doesn't process already processed data.
+
+
+
+
+trigger(availablenow=true) vs trigger(now=true):
+trigger(availablenow=true) process incremental data in micro batches and stop it
+trigger(now=True) process all data at once and stop it.
+
+
+trigger("processingTime=10seconds"). process data in microbatches.
+once a micro batch complete it shut down that batch and another batch starts
+
+trigger("continuous=10seconds")  starts continously reading data and creates checkpoint for every 10 seconds.
+
+
+write into multiple sinks:
+df.readstream()
+
+df.writeStream() checkpoint1
+df.writeStream() checkpoint2
+
+
+In this case if we trying to write into two different streams
+• spark will run separate streaming queries. This means it will pull data from the source multiple times (e.g., hitting Kafka twice) and execute upstream DAG transformations independently for each sink, which causes performance overhead.
+• Crucial Step: Every stream must have its own unique checkpointLocation.
+
+
+solution:
+foreachbatch(python function).
+
+df.writeStream.foreachBatch(call function).
+In python function we expliclty write into two different sinks. no need of defining two checkpoint locations.
+
+Here dataframe is reusing, hence we will not end up above issue.
+
+
+
+Handling errors:
+Insteading of writing try and except in every function or every main piece of the code.
+Develop a separate function a each case and call all those functions in another function which is handled with try and except.
+
+
+from pyspark.sql.functions import lit
+
+def device_data_output(kafka_df, batch_id):
+    print("Batch id:" + str(batch_id))
+    try:
+        # Get the Flattened and Error Dataframe
+        flattened_df, error_df_raw = flatten_data(kafka_df)
+
+        # Add the batchid column in Error Dataframe
+        error_df = error_df_raw.withColumn("batchid", lit(batch_id))
+
+        # Write Flattened Dataframe to JDBC
+        postgres(flattened_df, "device_data")
+
+        # Write Error Datafram to JDBC
+        postgres(error_df, "device_data_error")
+
+        # Display both Dataframes for confirmation
+        flattened_df.show()
+        error_df.show()
+    except Exception as e:
+        print(e)
+        kafka_df.write.format("parquet").mode("append").save("data/output/device_data_error.parquet")
+
+
+
+
+
+Tumbling (fixed) Window:
+Fixed time no overlap.
+
+
+A tumbling window groups records into fixed-duration, non-overlapping time intervals. Each record belongs to exactly one window based on its timestamp. 
+
+For a 5-minute tumbling window:
+
+Window	Records included
+10:00–10:05	Event time ≥ 10:00 and < 10:05
+10:05–10:10	Event time ≥ 10:05 and < 10:10
+10:10–10:15	Event time ≥ 10:10 and < 10:15
+The start is included; the end is excluded. A record at exactly 10:05:00 belongs to the second window. 
+
+Example: calculate sales for every 5 minutes
+
+Incoming records:
+
+Order	Event time	Amount	Assigned window
+101	10:01	100	10:00–10:05
+102	10:03	150	10:00–10:05
+103	10:04	50	10:00–10:05
+104	10:06	200	10:05–10:10
+105	10:09	300	10:05–10:10
+The calculated aggregates are:
+
+Window	Total sales	Order count
+10:00–10:05	300	3
+10:05–10:10	500	2
+
+
+from pyspark.sql import functions as F
+
+orders = spark.readStream.table(
+    "rajeswariade.bronze.orders_events"
+)
+
+sales = (
+    orders
+    .withWatermark("event_time", "2 minutes")
+    .groupBy(
+        F.window("event_time", "5 minutes")
+    )
+    .agg(
+        F.sum("amount").alias("total_sales"),
+        F.count("*").alias("order_count")
+    )
+)
+
+
+Late record (late event occurs):  late record processing depends on watermark and with in the window latest event occur time.
+Your 10:04 record belongs to the earlier window. Whether Spark accepts it depends on how far event time has progressed.
+Example 1: Latest event time seen is 10:06
+Watermark = 10:06 − 2 minutes = 10:04
+
+The earlier window ends at 10:05, which is ahead of the watermark.
+That window is still open, so Spark adds your 10:04 record to its total.
+Example 2: Latest event time seen is 10:08
+Watermark = 10:08 − 2 minutes = 10:06
+
+Once that watermark takes effect, it has passed the earlier window’s end, 10:05.
+Spark finalizes that window. If your 10:04 record arrives afterward, Spark drops it from the aggregation. learn.microsoft.com
+Latest event time seen	Watermark	What happens to the 10:04 record?
+10:06	10:04	Included in the still-open earlier window
+10:08	10:06	Dropped after the earlier window is finalized
+
+
+Both situations occur while processing records from 10:05–10:10. The latest event time seen determines which situation applies.
+
+
+
+Sliding window or overlap window:
+
+A sliding window uses fixed-duration windows that overlap. Therefore, one event can contribute to more than one window. spark.apache.org
+For example:
+- Window duration: 10 minutes
+- Slide duration: 5 minutes — a new window starts every 5 minutes.
+Window	Start	End
+Window 1	10:00	10:10
+Window 2	10:05	10:15
+Window 3	10:10	10:20
+
+
+Example with two sales
+Event time	Amount	Windows containing the event
+10:07	100	10:00–10:10 and 10:05–10:15
+10:12	150	10:05–10:15 and 10:10–10:20
+
+
+The calculated totals are:
+Window	Calculation	Total
+10:00–10:10	100	100
+10:05–10:15	100 + 150	250
+10:10–10:20	150	150
+
+
+The 10:07 sale contributes to two totals because both windows cover 10:07. These are overlapping summaries, so adding all window totals would count some sales multiple times.
+PySpark code
+Assuming orders is your streaming DataFrame:
+
+from pyspark.sql import functions as F
+
+sliding_sales = (
+    orders
+    .withWatermark("event_time", "2 minutes")
+    .groupBy(
+        F.window(
+            "event_time",
+            "10 minutes",  # Window duration
+            "5 minutes"    # Slide duration
+        )
+    )
+    .agg(
+        F.sum("amount").alias("total_sales")
+    )
+)
+
+
+
+
+Session window:
+A user login into application and send an events but he idle for 5 minutes. so we can end session and recreate a new session after he resume his events.
+
+
+A session window groups events that occur close together. Its duration grows as more events arrive, using a configured inactivity gap. spark.apache.org
+For example, use a 5-minute gap to group a user’s website clicks into sessions.
+Example: one user’s activity
+Event time	What happens	Session interval so far
+10:00	First click starts Session 1	10:00–10:05
+10:03	Only 3 minutes after the previous click; extends Session 1	10:00–10:08
+10:07	Only 4 minutes after the previous click; extends Session 1	10:00–10:12
+10:20	Outside the previous session’s interval; starts Session 2	10:20–10:25
+
+
+Notice that the 10:07 click belongs to Session 1, even though it happened seven minutes after the first click. Spark compares the gap with the most recent activity, so the session keeps extending.
+The calculated results are:
+User	Session start	Session end	Click count
+A	10:00	10:12	3
+A	10:20	10:25	1
+
+
+The session end is the last event time plus the gap:
+For Session 1, 10:07 + 5 minutes = 10:12. The gap does not mean every session lasts exactly five minutes.
+
+
+
+
+Event time: When the event actually happened.
+Processing time: When Spark processes that event.
+For example, you place an order at 10:04 AM, but a delay means Spark processes it at 10:12 AM:
+- Event time = 10:04 AM
+- Processing time = 10:12 AM
+
+
+
+For your sales report, group by event time:
+from pyspark.sql.functions import window, sum as spark_sumsales = (    df.groupBy(window("event_time", "10 minutes"))      .agg(spark_sum("amount").alias("total_sales")))
+
+
+Here, event_time determines which window each order belongs to. spark.apache.org
+For order 102:
+- Order happened at 10:04.
+- Spark processed it at 10:12.
+- This code counts its amount in the 10:00–10:10 window, provided the late record is accepted.
+If you change the column to:
+df.groupBy(window("processing_time", "10 minutes"))
+
+
+Then order 102 belongs to the 10:10–10:20 window.
+
+
+In streaming watermark time means window going back.
+example window time is 2 mintues, current window processing 10:05 to 10:10
+in this window first event occur time - window time (10:06 - 2)= 10:04
+if any event occurs late but the event time is 10:04 or later that is processed.
+if event time is 10:03 but watermark timestamp window is greater than the latest arrived event time so this event is discarded by spark.
+
+
+
+
+## At-most-once vs  At-least-once vs  Exactly-once
+ Guarantee  				Meaning 		 						Data loss possible?  		Duplicate effect possible? 
+ **At-most-once**  	A record is handled zero or one time.  				Yes 						 No 
+ **At-least-once**  A record is handled one or more times.  			No  						Yes 
+ **Exactly-once**  	Each record affects the final result exactly once.  No  						 No 
+
+
+Imagine this incoming transaction:
+Transaction ID: T101
+Customer ID: 101
+Amount: ₹100
+
+The customer’s starting total is ₹0.
+1. At-most-once
+The system marks T101 as consumed before updating the customer’s total.
+- It crashes before applying ₹100.
+- After restarting, it skips T101 because it is already marked consumed.
+- Final total: ₹0 — the transaction was lost.
+
+2. At-least-once
+The system updates the total before marking T101 as completed.
+- It applies ₹100, then crashes before recording completion.
+- After restarting, it retries T101 and applies another ₹100.
+- Final total: ₹200 — the transaction affected the result twice.
+
+3. Exactly-once
+The system ensures that retrying T101 cannot apply its effect again—for example, by atomically committing both the update and its transaction ID.
+- It applies ₹100, then crashes.
+- After restarting, it may retry T101.
+- The system recognizes that T101 was already committed and avoids applying it again.
+- Final total: ₹100 — the correct result.
+Exactly-once does not mean the code runs only once. The code may run again after a failure, but the committed result changes only once.
+
+
+
+At-most-once:
+# Pseudocode: these functions represent durable operations.
+record = read_next_record()
+mark_as_consumed(record)     # Source progress saved first
+write_to_target(record)      # Target write happens second
+
+
+
+At-least-once:
+record = read_next_record()
+write_to_target(record)      # Target write happens first
+mark_as_consumed(record)     # Source progress saved second
+
+
+code:
+def write_batch(batch_df, batch_id):
+    (
+        batch_df.write
+        .format("delta")
+        .mode("append")
+        .saveAsTable("rajeswariade.bronze.orders_target")
+    )
+
+
+Exactly-once:
+Write the data in a way that recognizes and safely ignores a repeated attempt.
+For Delta writes inside foreachBatch, use:
+Option				Purpose							Example
+txnAppId	Identifies this writer					"orders-loader-v1"
+txnVersion	Identifies the batch being written	    5
+
+
+Delta records the transaction identity with the committed write. A retry with the same identity is ignored.
+
+
+code:
+source_df = (
+    spark.readStream
+    .table("rajeswariade.bronze.orders_source")
+)
+
+def write_batch_exactly_once(batch_df, batch_id):
+    (
+        batch_df.write
+        .format("delta")
+        .mode("append")
+        .option("txnAppId", "orders-loader-v1")
+        .option("txnVersion", batch_id)
+        .saveAsTable("rajeswariade.bronze.orders_target")
+    )
+
+query = (
+    source_df.writeStream
+    .foreachBatch(write_batch_exactly_once)
+    .option(
+        "checkpointLocation",
+        "/Volumes/rajeswariade/bronze/streaming_files/checkpoints/orders"
+    )
+    .trigger(availableNow=True)
+    .start()
+)
+
+query.awaitTermination()
+
+
+
+
+ Guarantee 				Implementation idea  						Failure outcome 
+ At-most-once  			Save progress → write  						May lose data 
+ At-least-once  		Write → save progress  						May duplicate data 
+ Exactly-once  			Make the write retry-safe → save progress  One committed effect per input 
+
+
+
+
+txnAppId and txnVersion are recorded in the target Delta table’s _delta_log. The streaming checkpoint tracks which batch Spark needs to run.
+They work together, but have different jobs:
+Location								What it tracks
+Streaming checkpoint				Source offsets, batch IDs, and completed batches
+Target table’s _delta_log		    The writer’s txnAppId and committed txnVersion, used to prevent repeated writes
+
+
+Delta stores the transaction identity as a txn action in its transaction log. GitHub
+Consider this code:
+def write_batch(batch_df, batch_id):   
+(batch_df.write.format("delta").mode("append").option("txnAppId", "orders-loader").option("txnVersion", batch_id)        .saveAsTable("rajeswariade.bronze.orders_target"))
+
+
+txnAppId = "orders-loader": You provide this stable identifier for the writer.
+txnVersion = batch_id: Spark supplies the batch ID to your function, and you pass it to Delta as the transaction version. This is separate from the Delta table’s own version number. Delta Lake
+Suppose Spark is processing batch 5 with 10 records.
+1. Spark records the source offsets for batch 5 in the checkpoint. These identify the data belonging to this batch.
+2. Your function writes the 10 records to Delta. In the same atomic commit, Delta records transaction information equivalent to:
+   {"txn": {"appId": "orders-loader", "version": 5}}
+3. After the function succeeds, Spark records batch 5 as completed in the streaming checkpoint.
+
+Now imagine the application crashes after step 2 but before step 3.
+Streaming checkpoint						Delta target
+Batch 5 has no completion entry			The 10 records and transaction version 5 are already committed
+
+
+
+When you restart with the same checkpoint:
+1. Spark sees that batch 5 did not finish, so it retries batch 5.
+2. Your function again passes "orders-loader" and 5.
+3. Delta checks the transaction version already recorded for "orders-loader".
+4. It recognizes this write as already committed and skips appending the records.
+5. The function returns successfully, and Spark records batch completion. GitHub
+The checkpoint tells Spark “retry batch 5.” The Delta transaction log tells Delta “batch 5’s write already succeeded.
+
+
+
+
+
+## Rerun batch in streaming:
+ Action  														Result 
+ Restart with the same checkpoint 	 						Completed records are skipped; target stays at 10
+ Replay with a new checkpoint and append  					Those records are inserted again; target becomes 20
+ Replay with a new checkpoint and `MERGE` by record ID  	Existing records are updated; target stays at 10 
+
+
+ If records already written into target table using same checkpoint we can't rerun the batch.
+ Using new checkpoint we can do it but data might become duplicate.
+
+
+ Rerun a micro batch of streaming pipeline is not possible.
+
+
+
+
+##  Reset offset in event hub of event or structured streaming offset reset in the event hub:
+ reseting offset need to handle separately in the notebook.
+ reseting offset need a separate checkpoint location, regualr 
+
+You can move a consumer’s reading position backward for a specific Event Hubs partition and read those events again. The events keep their original offsets; you change where the consumer starts reading. Microsoft Learn
+For example, using Event Hubs’ Kafka endpoint:
+- Partition 0’s events at offsets 100–109 were already processed.
+- The consumer’s next reading position is 110.
+- Starting it again at 100 lets it reread those events and continue forward.
+You can choose the position independently for each partition:
+Partition	Previous next position	Desired replay position
+0					110						100
+1					500						500
+
+
+For your Databricks Structured Streaming scenario, create a separate replay stream that reads only partition 0. Add these options to its Kafka readStream configuration:
+.option("assign", '{"orders":[0]}').option("startingOffsets", '{"orders":{"0":100}}')
+
+
+Here, orders is the Event Hub name, 0 is the partition, and 100 is the Kafka offset.
+Use a fresh replay checkpoint on its writeStream:
+.option("checkpointLocation",    "/Volumes/catalog/schema/checkpoints/orders_replay_p0_run001")
+
+
+Using the existing streaming checkpoint would resume from its saved position and ignore your new startingOffsets. The separate replay query preserves regular processing’s checkpoint. Spark 4.2.0 Documentation
+Replay works only while the requested events are still retained in Event Hubs. For older data that has expired, replay from your Bronze table or captured archive. 
+
+
+
+###########################################################################################
+## Lakebase:
+Lakebase is Databricks response to that. A fully-managed Postgres database, integrated directly into the platform.
+
+LTAP (OLTP + OLAP):
+Lake Transactional/Analytical Processing (LTAP) is a data architecture that serves both transactional (OLTP) and analytical (OLAP) workloads from a unified data storage layer in the lake, under one governance model, so you don't have to keep separate transactional and analytical systems in sync. It removes the change data capture (CDC), replication, and transformation pipelines that teams traditionally maintain to copy operational data into a separate analytical system.
+
+
+Sync data from Lakehouse to Lakebase and vice-versa
+
+Lakehouse to lakebase --> using synced table.
+Lakebase integrates with Delta tables through Lakeflow synchronization pipelines. Lakeflow orchestrates the replication of analytical data from Delta into Lakebase (Postgres) for operational use cases.
+
+
+Mode of synchronization:
+Continuous. Incremental updates, lowest update lag, highest cost. Use this when data freshness is critical.
+Triggered. Incremental updates on a schedule, a balance between update lag and cost. Suitable for periodic operational updates
+Snapshot. A one-off bulk load, most performant and cheapest. Use this for data that does not change frequently.
+
+
+
+Lakebase to Lakehose --> ETL pipeline.
+
+In real world, OLAP system do analysis, OLTP system as transactional system.
+Example: A customer did a transaction, this transaction realted information like with draw and purchase of transaction will deal in OLTP system.
+In OLAP  system we are doing analysis of his previous transactions and checking for the fraud. this analysis immedaitely sent to OLTP system. if the transaction is fraud transaction will be blocked immedaitely.
+
+
+So OLAP analysis data need to move to OLTP system (a separate database or same) using ETL process.
+To overcome this problem lakebase is introduced. 
+
+
+In the traditional setup you described, companies had to run a heavy analysis loop:
+OLTP (Transaction) ➔ ETL ➔ OLAP (Fraud Analysis) ➔ Reverse ETL ➔ OLTP (Block Card).
+By the time the data made that round trip through separate databases, the fraudster had already walked away with the stolen goods because traditional ETL is too slow.
+
+
+
+
+
+Lakebase to Lakehouse: Using CDF data move to OLAP system(databricks lakehouse delta tables)
+Databricks closes the loop bi-directionally using a native feature called Lakebase Change Data Feed (CDF) (previously referred to as Lakehouse Sync).
+Just like you sync refined analytical data down to your app, you also need to stream raw transactional data back up to the lakehouse for future analysis.
+
+How Data Moves from Lakebase back to Lakehouse
+
+When a customer buys an item or changes their account settings, that transaction hits your Lakebase Postgres tables first.
+Instead of forcing you to build complex database connectors or Kafka pipelines, Databricks lets you toggle a single schema-level switch called Lakebase CDF. Once turned on:
+1. Native CDC (Change Data Capture): It reads Postgres's internal Write-Ahead Log (WAL) behind the scenes without slowing down your live app performance.
+2. Streaming to Delta: Every single INSERT, UPDATE, and DELETE committed in your Postgres database is automatically captured and written into Unity Catalog as a managed Delta Lake history table.
+3. The Target: These tables appear in your lakehouse catalog with a historical tracking format (usually named lb_<table_name>_history). They usually reflect changes with a lag of just a few seconds.
+
+The Complete Data Lifecycle
+
+Putting both pieces together complete the ultimate architecture:
+1. Lakebase ➔ Lakehouse (via CDF): Your live web app records new transactions in Lakebase. These instantly stream up into your lakehouse's Bronze layer to update historical logs.
+
+2. Inside the Lakehouse: Heavy Spark/Photon jobs process that transaction history, train AI models, and spot fraud.
+
+3. Lakehouse ➔ Lakebase (via Synced Tables): The fresh analytical results, fraud scores, or updated metrics are synced right back to Lakebase so the web application can access them with sub-10ms response times.
+
+
+
+
+Lakehouse Architecture:
+Lakebase is built on three foundational pillars:
+
+The PostgreSQL database engine
+Decoupled storage and compute
+Native integration with the Databricks Lakehouse
+Press enter or click to view image in full size
+
+
+
+cluster info:
+When you create a Lakebase project, Databricks automatically creates the PostgreSQL compute for its default branch and manages it for you.
+You do not need to create a separate VM, Spark cluster, or SQL warehouse.
+
+
+
+
+Lakebase deployment:
+Dev --> SIT --> Prod
+
+changed add into git and deploy using devops CI/CD.
+
+
 
 
 
