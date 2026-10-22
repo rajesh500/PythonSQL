@@ -568,6 +568,133 @@ Synthetic partition keys are created by concatenating multiple properties (e.g.,
 
 
 
+## Data Model:
+Cosmos DB data modeling means deciding how to structure JSON documents, represent relationships, and choose partition keys so that your application reads and writes data efficiently.
+
+Start with the access patterns
+An access pattern means how the application retrieves or updates data.
+For example:
+- Get a customer’s profile and addresses.
+- Get all orders for one customer.
+- Get one order with its purchased products.
+- Update a product’s current price.
+
+In relation database 
+Table				Example columns
+Customers			CustomerId, Name, Email
+Addresses			AddressId, CustomerId, City, State
+Orders				OrderId, CustomerId, OrderDate
+OrderItems			OrderId, ProductId, Quantity, PurchasePrice
+Products			ProductId, ProductName, CurrentPrice
+
+
+In Cosmos DB, you choose between three approaches:
+Approach					Meaning	Example
+Embedding			Store related data inside one document				Customer addresses inside the customer document
+Referencing			Store separate documents connected by IDs			An order contains customerId
+Hybrid				Combine embedding and referencing					Separate orders, with order items embedded inside each order
+
+
+Embedding often reduces the reads needed to retrieve related data. 
+Referencing is useful when related data grows substantially or changes independently.
+
+
+
+Embedding: put related data inside one document
+example:
+{
+  "id": "C101",
+  "customerName": "Rajesh",
+  "email": "rajesh@example.com",
+  "phone": "3125550100",
+  "addresses": [
+    {address1},
+    {address2}
+  ],
+  "orders": [
+    {
+      "orderId": "O1001",
+      "orderDate": "2026-10-18",
+      "status": "Delivered",
+      "products": [
+        {product1},
+        {product2}
+      ],
+      "totalAmount": 100
+    },
+    {
+      "orderId": "O1002",
+      "orderDate": "2026-10-19",
+      "status": "Placed",
+      "products": [
+        {
+          "productId": "P103",
+          "productName": "Monitor",
+          "category": "Electronics",
+          "quantity": 1,
+          "unitPriceAtPurchase": 200
+        }
+      ],
+      "totalAmount": 200
+    }
+  ]
+}
+
+Information	Where it is stored
+Customer details			At the document’s top level
+Customer addresses			Inside the addresses array
+Customer orders				Inside the orders array
+Products purchased			Inside each order’s products array
+
+Referencing: keep growing data in separate documents.
+Each object has separate container and maintain relational field in this containers.
+
+
+To join this SQL won't support, use python or pyspark to handle join of two containers.
+
+SQL with in the container, with in the items if we have array object getting data from that object use kind of self join using SQL works here.
+Ex: SELECT
+    c.id AS orderId,
+    p.productName,
+    p.quantity
+FROM c
+JOIN p IN c.products
+
+pyspark read each container into separate df, if any df has array object flattern the data and join.
+If thier is no java object just join.
+
+
+
+
+
+Hybrid Model:
+keep customer and customeraddress in one container.  customer id 
+product in one container. product id
+order and orderitem in one container   customer id and prodcut id in array
+
+join customer id on customer and order
+join product on prodcut id of both but from order it order item array object has product id.
+
+
+
+
+Python SDK to connect cosmos DB and do DML operations on items:
+
+	
+Operation							SDK Method														Required Parameters
+Create (Strict)				container.create_item(body)											Entire document containing an id string.
+Create / Overwrite			container.upsert_item(body)											Entire document. Overwrites if id matches.
+Read						container.read_item(item, partition_key)							Target id and the partition key value.
+Update (Replace)			container.replace_item(item, body)									Target id and the updated entire document payload.
+Update (Patch)				container.patch_item(item, partition_key, patch_operations)			Target id, partition key, and a list of structural operational dicts.
+Delete						container.delete_item(item, partition_key)							Target id and the partition key value.
+
+
+
+Hybrid model use case?
+
+
+
 
 
 

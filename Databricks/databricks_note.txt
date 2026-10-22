@@ -5237,6 +5237,171 @@ changed add into git and deploy using devops CI/CD.
 
 
 
+## API stands for Application programming interface:
+
+One application request information, other application send those information.
+Example:
+
+Web application request information, DB query the data (receving input from the web application)
+and send the required information.
+
+APIs can support different actions:
+- GET: Retrieve a customer.
+- POST: Create a customer.
+- PUT/PATCH: Update a customer.
+- DELETE: Delete a customer.
+
+
+Simple Example:
+@app.get("/customers/{customer_id}"). main, receiving data from API and pass it the below function and return the information.
+Again url catch and display.
+
+
+FastAPI is opensource
+
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI(title="Simple Customer API")
+
+customers = {
+    101: {
+        "customer_id": 101,
+        "name": "Rajesh",
+        "city": "Chicago"
+    },
+    102: {
+        "customer_id": 102,
+        "name": "Priya",
+        "city": "Dallas"
+    }
+}
+
+
+@app.get("/")
+def home():
+    return {"message": "My Python API is running!"}
+
+
+@app.get("/customers/{customer_id}")
+def get_customer(customer_id: int):      ## database level connect to the database and query it
+    customer = customers.get(customer_id)
+
+    if customer is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Customer not found"
+        )
+
+    return customer
+
+
+
+In real time data engineering scenario,  Azure function HTTP trigger will work as API.
+
+In azure function develop a python function to retrieve data from database.
+Once function is developed, deploy it we will see HTTP url, this url being used as API.
+This API is used in application and pass the required information, now azure function is triggered and connect to the database and pull the required information.
+
+
+ Azure service 											What it does 														When to consider it 
+
+ **Azure Functions — HTTP trigger** 			 Runs your function when an HTTP request arrives 							APIs implemented as individual functions 
+ **Azure App Service** 						 Hosts your API application, including its endpoints and business logic 	A complete API application with many operations 
+ **Azure Container Apps** 						 Runs your API packaged in a container 										 Container-based APIs with managed scaling 
+ **Azure Kubernetes Service — AKS** 			 Runs containerized services using Kubernetes				 Organizations that need Kubernetes capabilities and control 
+ **Azure API Management — APIM** 				Receives API requests, applies policies, and forwards them to your backend  Centralized token validation, rate limits, routing, and API management 
+
+
+
+
+If api request information is n't availbale it returns 404
+
+
+
+ Status  				Meaning  											Typical pipeline action 
+ 200  				Successful request  								Validate and process the response 
+ 201  				Resource created  									Record the created resource identifier 
+ 202  				Accepted for processing  							Follow the documented job-status/polling workflow 
+ 204  				Successful response without content  				Handle an empty body 
+ 304  				Resource not modified  								Reuse the previously stored representation 
+ 400 / 422  		Invalid request or validation failure  				Correct the request or quarantine invalid input 
+ 401  				Authentication required or invalid credentials  	Diagnose authentication; reacquire an expired token when appropriate
+ 					Token expired 
+ 403  				Access forbidden  									Check permissions and authorization 
+ 404  				Resource not found  								Handle according to the API contract 
+ 409 / 412  		Conflict or failed precondition  					Resolve the conflict or concurrency condition 
+ 429  				Request rate exceeded  								Respect Retry-After when supplied and reduce request pressure 
+ Transient 500      Server or gateway failure          					Apply bounded retries when the operation can be retried safely 
+ / 502 / 503 / 504
+
+
+ If url is not valid HTTPSConnectionPool(host='exaple.com', port=443): Max retries exceeded with url: / (Caused by ConnectTimeoutError(, 'Connection to exaple.com timed out. (connect timeout=10)'))
+
+
+
+
+Pagination:
+Pagination is a software design technique used by developers to split large sets of data into smaller, manageable chunks (or "pages") before sending them over the internet.
+Just like a search engine splits millions of web results across Page 1, Page 2, and Page 3, an API uses pagination so it doesn't crash your application or overload the server by sending too much data at once.
+
+Why is Pagination Necessary?
+If you tried to fetch all 1,000,000 records from a database at the exact same time without pagination, three things would happen:
+• Server Crash: The API database would run out of memory trying to bundle all the data together.
+• Network Freeze: Downloading a massive multi-gigabyte text file would make your Python script hang or time out.
+• Wasted Resources: If your user only needs to look at the top 10 recent items, loading the other 999,990 items is a massive waste of electricity, bandwidth, and processing power.
+
+The 3 Main Types of Pagination
+Depending on how the API was built, it will use one of these three common patterns:
+
+1. Page-Based Pagination (The Book Style)
+This is the most common style. The API asks you for a page number and a per_page limit.
+• Example URL: https://api.com
+• Best for: Simple datasets, search results, and tables where users want to click a specific page number.
+
+2. Offset-Based Pagination (The Row-Counter Style)
+Instead of page numbers, the API asks for a limit (how many items to return) and an offset (how many items to skip from the very beginning).
+• Example URL: https://api.com (This means: "Skip the first 200 items, and give me items 201 to 300")
+• Best for: SQL databases, but it slows down heavily when the offset gets very high.
+
+3. Cursor / Token Pagination (The Infinite Scroll Style)
+Instead of numbers, the server gives you a unique, encrypted string called a cursor or next_token. To get the next batch, you have to hand that exact token back to the server.
+• Example URL: https://api.com
+• Best for: Rapidly changing, massive feeds (like Twitter, Instagram, or Slack messages) because it prevents duplicate items from showing up if a new record is added while you are scrolling.
+
+
+
+Pagniation is spliting technique for large volume of data.
+page is chunk of data
+per_page		No of records for per page
+
+
+
+
+
+import requests
+
+url = "https://dummyjson.com/products/1"
+
+response = requests.get(url, timeout=30)
+response.raise_for_status()
+
+product = response.json()   # ooutput in list of dictonary, each dictionary is inside the list,  ## output will be like this [{}, {}, {}] accessing will be done as list and using dictionary keys
+product1 = response.text    # output return in string, accessing data in string format only.
+product1 = response.text    # output return in string, accessing data in string format only.
+							# useful when take data as string and convert into list
+							# data will be plain text as in row or column in the url
+
+product2 = response.content # download the content from URL and save in text or csv file an use it.
+#data is comma separate tabular format data (row and columns)
+
+print(product["id"])
+print(product["title"])
+print(product1)
+
+
+
+
+
 Kafka: distributed event streaming platform designed to ingest, store, and process high-volume, real-time data feeds
 producer An application that sends message/data to kafka
 message size is small to medium
