@@ -30,6 +30,7 @@ Technical Metadata: Defines the schema, data types, column names, table structur
 Operational Metadata: Tracks data pipeline performance, job schedules, runtime, metrics and lineage(where data came from and how it changed).
 Business Metadata: Adds context such as data ownership, definitions.
 
+** one Unity Catalog metastore per cloud region
 
 Data Lineage:
 Life cycle of data
@@ -156,6 +157,35 @@ and select the above create registration.
 In databricks spark.set.config define the information tenant, client, secret ID and about account name.
 Hence the connection established but username, password are visible in the code.
 
+Managed Identity:
+Use Managed Identities for internal, Azure-to-Azure infrastructure data access.
+
+Service Principle:
+use Service Principals for external automation, pipelines, and API integrations.
+Example:
+databricks to github actions.
+
+** If we want to create a connect from databricks to AWS S3,
+ we don't need managed identity or service principle concept to estalish a connection.
+ Here from databricks itself has 
+ catalog explorer --> credentials --> connection type AWS IAM role -->
+ storage/service credential --> I am role ARN 
+
+ AWS I AM select the URL from previously databricks --> role --> access policy 
+ Back to databricks create an external location of AWS S3.
+
+• The Goal: A software engineer pushes code changes to a GitHub repository, and a GitHub Actions 
+runner needs to automatically deploy that notebook into your Databricks Workspace.
+• Why SP? GitHub sits outside of your Azure infrastructure. 
+It needs a distinct application identity with an active API token or 
+client secret to authenticate against the Databricks REST API.
+
+
+# Storage Credentials: Exclusively used to connect Databricks to cloud object storage 
+(e.g., ADLS Gen2, AWS S3, Google Cloud Storage) to build Data Lakes, External Locations, and Tables.
+
+# Service Credentials: Used to connect notebook code or Python UDFs to external cloud services 
+(e.g., Azure Key Vault, AWS Secrets Manager, Azure OpenAI, AWS Glue, Google Pub/Sub) via cloud provider SDKs
 
 
 
@@ -177,7 +207,7 @@ view is created under neath of table query.
 
 CTAS (create table as select)
 deep clone and shallow clone:
-deep clone --> metadata and data will be copied.
+deep clone --> metadata and data will be copied.  (double storage)
 shallow --> only metadata, data still point to the version of table you created.
 directly insert into shallow table, it will not reflect into main table.
 
@@ -319,14 +349,59 @@ cluster: multinode, single node
 Databricks runtime version: standard, ML
 standard (15.4 LTS) long time stand LTS
 
+
+
+Spark Engine problem to choose Photon Engine:
+
+1. The Bottleneck: Memory and Garbage Collection
+• What standard Spark doesn't solve: Because Spark runs inside the Java Virtual Machine (JVM), 
+every piece of data is treated as a Java object. On massive datasets, this creates a massive memory footprint. 
+When Spark cleans up memory, it triggers JVM Garbage Collection (GC) pauses. 
+This literally freezes your cluster's CPU for seconds or minutes at a time while Java cleans up its trash.
+
+• What Photon does: Photon is written in native C++. It entirely bypasses the JVM for data processing. 
+It allocates and deallocates memory directly at the hardware level, completely eliminating Garbage Collection pauses 
+and reducing memory overhead to near zero.
+
+2. The Bottleneck: Row-by-Row Processing
+• What standard Spark doesn't solve: The classic Spark engine processes data row-by-row through an execution tree. 
+If you want to add a 10% tax to a column of 1 billion rows, Spark loops through the code 1 billion times, creating massive
+ CPU instruction overhead.
+
+• What Photon does: Photon uses Vectorized Execution. Instead of processing row-by-row, it loads data into massive,
+ contiguous blocks (vectors) in memory. It then applies a single instruction to the entire block at once.
+
+3. The Bottleneck: CPU Underutilization (SIMD)
+• What standard Spark doesn't solve: Modern computer processors have a feature called SIMD (Single Instruction, Multiple Data
+This allows a CPU chip to calculate multiple operations parallelly inside a single clock cycle. 
+Because standard Spark generates Java bytecode, the JVM cannot reliably instruct physical modern CPUs to use SIMD. 
+Your expensive cloud CPUs sit largely underutilized.
+
+• What Photon does: Because Photon is native C++, its code is highly compiled to exploit SIMD hardware registers. 
+It forces the cloud provider's physical CPU to process thousands of data points simultaneously in a single cycle, 
+maximizing the hardware you are paying for.
+
+4. The Bottleneck: Disk and Network I/O
+• What standard Spark doesn't solve: When reading files (like Parquet or Delta) from cloud storage, 
+the standard Spark engine spends a lot of CPU cycles decoding data from its stored format into Java objects. 
+This makes data ingestion slow and CPU-bound.
+
+• What Photon does: Photon includes a fully rewritten, native Parquet/Delta reader and writer. 
+It streams data straight from cloud storage directly into its C++ data vectors, removing the translation layer and 
+saturating your network speeds for ultra-fast data loading.
+
+
+# Photon Engine:
 use photon acceleration: databricks engine
 Databricks Photon is a high-performance, vectorized query engine developed by Databricks. 
 It accelerates SQL and DataFrame workloads running on Delta Lake and Parquet.
 
-You should choose the Databricks Photon engine over standard Apache Spark because it runs data workloads up to 5 times faster and reduces costs by replacing the Java Virtual Machine (JVM) with a native C++ engine.
+You should choose the Databricks Photon engine over standard Apache Spark because it runs data workloads 
+up to 5 times faster and reduces costs by replacing the Java Virtual Machine (JVM) with a native C++ engine.
 
 
-To see how Photon compares to standard Spark, let's look at a common scenario: calculating total sales from a massive table of transactions.Imagine you have a table with 100 million sales records, and you run this query to find the total revenue for a specific store:sql
+To see how Photon compares to standard Spark, let's look at a common scenario: calculating total sales from a massive table of transactions.
+Imagine you have a table with 100 million sales records, and you run this query to find the total revenue for a specific store:sql
 
 SELECT store_id, SUM(sale_amount) 
 FROM global_sales 
@@ -335,19 +410,28 @@ GROUP BY store_id;
 
 Use code with caution.Here is exactly how standard Spark and the Photon engine handle this query differently under the hood.
 
-1. Standard Spark Engine (The Row-by-Row Worker)Standard Spark is built on Java/Scala (JVM). When you run the query, it acts like a clerk processing a physical stack of papers one by one
-The Process: It reads row #1, checks if the store is 'Store_A', and adds the amount. Then it drops row #1, picks up row #2, and repeats this 100 million times.
-The Bottleneck: Because it runs in the JVM, every row creates a tiny bit of temporary memory data. The system frequently has to pause the entire operation to clean up this memory (known as Garbage Collection).
-CPU Idle Time: The computer’s main processor (CPU) spends more time waiting to fetch the next row from memory than it does actually doing the math.
+1. Standard Spark Engine (The Row-by-Row Worker)Standard Spark is built on Java/Scala (JVM). 
+When you run the query, it acts like a clerk processing a physical stack of papers one by one
+The Process: It reads row #1, checks if the store is 'Store_A', and adds the amount. 
+Then it drops row #1, picks up row #2, and repeats this 100 million times.
+The Bottleneck: Because it runs in the JVM, every row creates a tiny bit of temporary memory data. 
+The system frequently has to pause the entire operation to clean up this memory (known as Garbage Collection).
+CPU Idle Time: The computer’s main processor (CPU) spends more time waiting to fetch the next row from memory 
+than it does actually doing the math.
 
-2.  Photon Engine (The Turbocharged Factory)Photon is built on Native C++ and uses Vectorized Execution. It treats the data like an automated assembly line.
-The Process: Instead of pulling one row, Photon grabs a vector (a batch of 10,000 rows at once) and loads them straight into the CPU's fastest internal memory cache.
-The Math: Using SIMD (Single Instruction, Multiple Data), Photon tells the CPU: "Filter all 10,000 rows for 'Store_A' and add them up right now." The CPU executes this in a single clock cycle, processing thousands of records simultaneously.
+
+2.  Photon Engine (The Turbocharged Factory)Photon is built on Native C++ and uses Vectorized Execution. 
+It treats the data like an automated assembly line.
+The Process: Instead of pulling one row, Photon grabs a vector (a batch of 10,000 rows at once) 
+and loads them straight into the CPU's fastest internal memory cache.
+The Math: Using SIMD (Single Instruction, Multiple Data), Photon tells the CPU: "Filter all 10,000 rows for 'Store_A' and add them up right now." 
+The CPU executes this in a single clock cycle, processing thousands of records simultaneously.
 No Java Delays: Because Photon bypasses the JVM entirely, there are zero memory-cleaning pauses.
 
 The Result:
 Standard Spark might take 30 seconds to finish because it gets bogged down by row-by-row overhead and JVM memory management.
 Photon finishes the exact same query in 5 seconds because it maximizes your hardware's raw processing power.
+
 Computer:
 
 
@@ -420,7 +504,8 @@ Standard_E64ds_v5	64		512 GB	Memory optimized
 
 
 vCPUs stands for virtual central processing units
-Spark discussions, you can think of them as 16 CPU cores available to each worker node. Technically, they are virtual CPUs, not necessarily 16 physical cores.
+Spark discussions, you can think of them as 16 CPU cores available to each worker node. 
+Technically, they are virtual CPUs, not necessarily 16 physical cores.
 
 
 
@@ -5374,6 +5459,158 @@ Pagniation is spliting technique for large volume of data.
 page is chunk of data
 per_page		No of records for per page
 
+
+
+
+           sector|symbol|             total|
++------------------+------+------------------+
+|  softwareservices|  NSFT|113789.16162109375|
+|mediaentertainment|  HOOJ|441383.52978515625|
+|         retailing|  BMZM| 763114.5893554688
+
+
+nsft = 334
++------------------+------+------------------+
+|            sector|symbol|             total|
++------------------+------+------------------+
+|  softwareservices|  NSFT|114439.79162597656|
+|mediaentertainment|  HOOJ| 439753.2497558594|
+|         retailing|  BMZM| 763184.5893554688|
+
+
+
+
+
+Declarative vs. Procedural (Imperative) Languages:
+Declarive langugages:
+SQL and KQL
+
+A declarative query language is a language where you specify what data you want to retrieve, rather than how the system should physically fetch, loop through, or process the data.
+In a declarative language, you focus entirely on the end result, leaving the underlying database engine to figure out the most efficient way to execute your request.
+
+
+When we query a table, it will primarly focus on getting a result not on the engine or how to fetch etc....
+
+Procedural:
+Focus completely on HOW to get the result. You write explicit, step-by-step instructions (loops, variables, conditions) that the computer must follow sequentially.
+
+
+A Everyday Analogy
+• Declarative Approach: You tell a taxi driver, "Take me to the airport." You don't care which streets they take, what gear they are in, or how they avoid traffic. You just state the desired destination.
+• Imperative Approach: You give turn-by-turn directions: "Drive forward 500 feet, turn left on Main Street, shift into 3rd gear, accelerate to 40 mph, and stop at the light."
+
+
+
+Code Example Contrast
+Imagine you want to find all users over the age of 21 from a table called Users.
+
+Declarative (SQL/KQL Style):
+You just state the criteria. The database optimizer decides whether to use an index, scan the table, or run parallel processes.
+sql
+SELECT Name FROM Users WHERE Age > 21;
+
+
+Imperative/Procedural (Standard Programming Style):
+You explicitly tell the computer to create an empty list, loop through every single row, check the condition, and manually append the result.
+python
+adult_users = []
+for user in users_list:
+    if user['age'] > 21:
+        adult_users.append(user['name'])
+
+
+
+Declarative: SQL, KQL.
+Procedural: C, C++, python,  PLSQL, java, Bash/shell scriptiong etc....
+
+PLSQL is hybrid but consider has procedural language
+PYspark is same as hybrid.
+
+pyspark:
+You write code that looks like step-by-step instructions, chaining methods together sequentially:
+python
+# Looks procedural: step 1, then step 2, then step 3
+df_filtered = df.filter(df.age > 21)
+df_grouped  = df_filtered.groupBy("country").count()
+df_grouped.show()
+Use code with caution.
+
+2. The Declarative Engine (Under the Hood)
+Because of Lazy Evaluation, PySpark does absolutely nothing when you run the filter or groupBy lines. It doesn't look at a single row of data. Instead, it just builds a mathematical recipe (a Logical Plan) of what you want.
+
+Only when you call an action like .show() does PySpark hand that complete recipe over to its built-in optimizer (the Catalyst Optimizer). The optimizer looks at your steps globally and says: "I can combine these steps, ignore these columns, and distribute this workload across 100 computers simultaneously."
+
+
+
+In KQL database we can use pyspark as well but read and write should be done in KQL support way. direct read and write into table is not supported here
+we should use KQL support way.
+
+KQL database uses Kusto engine.
+
+All other transformation can apply here.
+
+
+
+
+
+
+
+## Eventstream
+Eventstream means receiving and processing events continuously as they arrive.
+An event is one record—for example, a payment, a temperature reading, or a vehicle location update.
+Eventstream can:
+- Receive events.
+- Apply rules, filters, and calculations.
+- Send the results to destinations. learn.microsoft.com
+Example: detecting a suspicious payment
+We configure this rule:
+If the transaction amount is greater than $10,000, flag it as suspicious.
+
+Transaction Amount  Eventstream result
+T101    $500    Does not match the rule
+T102    $15,000 Matches the suspicious-payment rule
+
+
+Eventstream itself checks this rule. We must configure the rule first.
+The three components have different responsibilities:
+Component   What it does
+Eventstream Receives events, checks configured processing rules, and routes results
+Eventhouse  Stores events and lets us query and analyze them
+Activator   Checks configured conditions and triggers alerts or workflows
+
+
+Activator can also contain detection rules, depending on how we design the flow. learn.microsoft.com
+What happens to the $15,000 payment?
+1. Eventstream receives the payment and identifies that it matches our rule.
+2. We send the transaction to Eventhouse for storage.
+3. Activator triggers a configured alert.
+4. An analyst uses Eventhouse to check the card’s previous payments.
+For this simple rule, Eventhouse is optional. It is useful when we need history and investigation.
+Another rule: “Flag a card with three payments within one minute.”
+Eventstream can group events by card and count payments within a time window. The result’s timing depends on the chosen window.
+Real time or near real time? Eventstream processes events continuously. Some delay can occur before data is stored, displayed, or used to trigger an action.
+A suspicious payment is not confirmed fraud. It matched a rule and needs further evaluation.
+
+
+
+Here Eventhouse or KQL database is used to store those fraud transaction to do more analysis of the data.
+Using this data fraud detection would be easy for ML.
+
+Yes. Historical transaction data can help train an ML model to detect future fraud.
+Eventhouse contains KQL databases, and transactions are stored in tables inside those databases. learn.microsoft.com
+The process is:
+1. Store transactions: Keep both normal and suspicious transactions.
+2. Investigate and label: Identify which transactions were actually fraudulent.
+3. Train the ML model: Use this history to learn patterns involving spending, transaction frequency, location, and devices.
+4. Evaluate new transactions: The trained model calculates a fraud-risk score for each new transaction. learn.microsoft.com
+For example:
+Transaction Initial rule result Investigation result
+$15,000 payment Suspicious  Legitimate purchase
+$500 payment    No rule matched Confirmed fraud
+
+
+These confirmed results help the model learn beyond simple amount thresholds.
+Storing data in Eventhouse does not automatically train ML. You must build the training and scoring process, then retrain the model when appropriate using updated data.
 
 
 

@@ -980,7 +980,6 @@ Null counts
 Compression information
 
 
-
 catalog working in fabric:
 When a file is only loaded into the Fabric Files area, it is not registered as a table, 
 so no Lakehouse catalog metadata exists for it. If the data is registered as a Delta table,

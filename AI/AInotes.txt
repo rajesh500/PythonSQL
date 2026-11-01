@@ -1,0 +1,39 @@
+Generative AI (Gen AI): it creates
+What it is: A model (an LLM such as Claude or GPT, or an image model) that produces new content when you give it a prompt. It answers once and stops. It doesn’t use tools, remember earlier work, or act on its own.
+
+Pattern: Prompt → Model → Output
+
+AI agent: it acts on one task
+What it is: An LLM plus tools, memory and a loop. It decides which steps to take, calls APIs or runs code, checks the results and repeats until a single task is finished.
+
+Pattern: Goal → Think → Use tool → Observe → Think → ... → Done
+
+
+Agentic AI:
+A system design in which several specialized agents plan, work together, hand off work, recover from failures and keep running toward a high-level goal with little human input. It is the orchestration layer above individual agents.
+
+Pattern:
+
+High-level goal
+     ↓
+Planner / Orchestrator agent
+     ↓  splits into subtasks
+┌────────────┬─────────────┬──────────────┬─────────────┐
+Ingestion    Transform     Quality        Governance
+agent        agent         agent          agent
+└────────────┴─────────────┴──────────────┴─────────────┘
+     ↓  shared memory, feedback, retries
+Outcome and self-monitoring
+
+
+
+One analogy for a data engineer
+Gen AI is like a smart Stack Overflow that writes the code you asked for.
+An AI agent is like a junior engineer who gets a ticket, runs queries, fixes the bug and closes the ticket.
+Agentic AI is like a whole data team (lead, ingestion engineer, analytics engineer, DQ engineer, SRE) working on its own toward “reliable customer data by 6 a.m. daily”.
+
+Common tools:
+Gen AI: the Claude, OpenAI or Gemini APIs, and Copilot.
+Agents: LangChain, the Claude Agent SDK, MCP servers connecting to Snowflake, BigQuery or Databricks, and Databricks Genie.
+Agentic orchestration: LangGraph, CrewAI, AutoGen, Databricks Agent Bricks and Snowflake Cortex Agents.
+

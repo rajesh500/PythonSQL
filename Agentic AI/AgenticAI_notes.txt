@@ -1,0 +1,333 @@
+Agentic AI:
+
+Agentic Frameworks:
+A framework gives us a ready-made structure and useful components, so that we can concentrate on building  our actual AI application.
+
+Without framework =  More work from the scratch
+with framework = Ready foundation + faster development.
+
+
+Agentic AI frameworks:  
+Code based frameworks
+Agno --> light weight and super fast.
+LangChain --> Foundation Library
+LangGraph --> for stateful and complex workflows build on top of langchain.
+LangFuse and LangSmith are montioring tools.
+crewAI --> specialized for multiagent framework
+Google ADK  (Agent development kit) --> specialized if you are already using google products like GCP and Gemini
+openAI SDK --> specialized if you are already using OpenAI products.
+claude SDK
+
+
+No code/low code Agentic frameworks:
+N8N
+make
+
+
+platform.openai.com
+
+
+
+
+Without LangChain:
+-----------------
+We can develop AI based applications.
+But we (Our Application) are responsible for
+ Application
+1. Prompt Management
+2. Model Management
+3. Conversation History and State Management
+4. Handling our own private data
+5. Tool Management like Caluclator, Search, Database
+6. Agentic Activities 
+
+
+With LangChain:
+--------------
+Application
+ |
+LangChain
+ |
+1. Prompt Management
+2. Model Management
+3. Conversation History and State Management
+4. Handling our own private data
+5. Tool Management like Caluclator, Search, Database
+6. Agentic Activities 
+
+
+
+
+LangChain provides useful building blocks, abstractions and
+Integrations for creating LLM applications.
+import os # os is module
+from langchain_openai import ChatOpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") #function
+llm = ChatOpenAI(model="gpt-4o",api_key=OPENAI_API_KEY)
+question = input("Enter the question: ")
+response = llm.invoke(question)
+print(response.content)
+
+
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+llm = ChatGoogleGenerativeAI(
+model="gemini-3.6-flash",
+ google_api_key=GOOGLE_API_KEY
+)
+question = input("Enter the question: ")
+response = llm.invoke(question)
+#print(response.content)
+print(response.content[0]["text"])
+
+
+
+
+
+LangChain is a framework for building applications using Large Language Models.
+
+company chatbot:
+ take user's question
+ create a proper prompt
+ communicate with LLM
+ search company documents
+ remember conversation history
+ call some external tools
+ retrieve information
+ process the result
+ finally give answer
+Many components are involved in this application.
+
+Lang ---> refers Language Models
+Chain --->Connect multiple components together
+Question --->Retriever -->Documents -->Prompt --->Model --->
+Answer
+
+LangChain as an Orchestration Layer:
+------------------------------------
+LangChain help us connect and coordinate the components of
+LLM application. Hence LC consider as Orchestration Layer for
+LLM Applications. The components can be:
+ Model
+ prompt
+ Memory/Histroy
+ Documents
+ Vector Database
+ Tools
+ Agents
+ etc
+
+
+LLM = Engine
+LangChain = System connecting and coordinating the parts
+around that engine.
+LangChain as abstraction layer:
+LangChain can provide an abstraction layer between our
+application and differet underlying services
+
+Abstraction vs Orchestration:
+-----------------------------
+Abstraction: Hide or simplify complexity
+ Give an easy/common way to interact with different
+components
+
+
+
+Orchestration : Coordinate multiple components
+ First prepare the prompt, then call the model, then parse the
+output
+Abstraction simplifies. Orchestration coordinates.
+LangChain can help us with both.
+
+LangChain EcoSystem:
+--------------------
+1. LangChain-->provides building blocks for developing LLM
+based applications
+2. LangGraph-->Controlled and stateful workflows/agents
+3. LangSmith-->Trace,debug and observability, monitoring and
+Evaluate LLM applications
+
+
+Understanding Messages and Message Types:
+-----------------------------------------
+Message: It is a structured unit of communication in a
+conversation with a chat model.
+3 types of Messages:
+1. SystemMessage--->Instructions/context that guide the
+model. It decides behaviour of the Model.
+2. HumanMessage--->Message from human/user
+3. AIMessage--->Response from Model
+Message Object vs content:
+----------------------------
+print(message) -->It prints message object representation |
+Complete Message object
+
+
+print(message.content) -->It prints specific content of the
+message | Actual Message content
+
+from langchain_core.messages import SystemMessage,
+HumanMessage, AIMessage
+system_message = SystemMessage(content = "You are
+experienced Python Teacher")
+human_message = HumanMessage(content = "What is
+Python?")
+ai_message = AIMessage(content = "Python is a wonderful
+prorgamming language")
+#print(system_message)
+#print(system_message.content)
+#print(human_message)
+#print(human_message.content)
+print(ai_message)
+print(ai_message.content)
+
+
+[
+ system message,
+ human message,
+ ai message,
+ human message,
+ ai message,
+ human message
+ ....
+]
+
+
+
+import os # os is module
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import
+SystemMessage,HumanMessage
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") #function
+llm = ChatOpenAI(model="gpt-4o",api_key=OPENAI_API_KEY)
+system_message = SystemMessage(content="You are
+Experienced Python Trainer")
+human_message = HumanMessage(content="Explain about
+Python in a single line")
+ai_msg = llm.invoke([system_message,human_message])
+#print(type(ai_msg))
+print(ai_msg)
+#print(ai_msg.content)
+system_message = SystemMessage(content="You are
+Experienced Life Skills Coach")
+human_message = HumanMessage(content="Explain about
+Law of Attraction")
+#ai_msg = llm.invoke([system_message,human_message])
+#print(type(ai_msg))
+#print(ai_msg)
+
+
+
+
+## How LLM "Memory" Actually Works
+
+• Stateless by Design: Once an LLM finishes answering your message, it retains zero memory of the interaction. From the AI's perspective, every new prompt is a blank slate (like a Groundhog Day scenario).
+
+• The Illusion of Memory (Context Window): When you chat with an AI, the app or website you are using (like ChatGPT or Claude) saves your chat history in a database. Every time you send a new message, the app resends the entire conversation history (plus your new message) back to the LLM.
+
+• The Context Window Limit: LLMs have a strict limit on how much text they can read at once, known as a context window (measured in tokens, which are chunks of words). If your conversation gets too long and exceeds this limit, the app has to drop older messages or summarize them. That is why the AI "forgets" things you talked about earlier in a long chat.
+
+
+If LLM didn't remember any past conversation then what is context window?
+
+Example: openAI or chatGPT is application interface uses LLM models, this application interface remember the context window.
+
+  
+
+
+-------------------------------------------
+Multiple Messages and Conversation Context
+-------------------------------------------
+import os
+from langchain_core.messages import SystemMessage,
+HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") #function
+llm = ChatOpenAI(model="gpt-4o",api_key=OPENAI_API_KEY)
+human_message = HumanMessage(content = "Hello, My Name
+is Durga")
+ai_message = llm.invoke("Hello My Name is Durga")
+print(ai_message.content)
+ai_message = llm.invoke("Oh wonderful LLM, What is my
+Name:")
+print(ai_message.content)
+
+
+
+--------------------------
+Context: It is information available to the model that helps it
+understand current request.
+Note:
+human_message = HumanMessage(content = "Hello, My Name
+is Durga")
+ai_message = llm.invoke(human_message) #ValueError
+ai_message = llm.invoke([human_message])
+
+--------------------
+import os
+from langchain_core.messages import SystemMessage,
+HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") #function
+llm = ChatOpenAI(model="gpt-4o",api_key=OPENAI_API_KEY)
+human_message1 = HumanMessage(content = "Hello, My
+Name is Durga")
+ai_message1 = llm.invoke([human_message1])
+print(ai_message1.content)
+human_message2 = HumanMessage(content = "What is my
+name?")
+ai_message2 = llm.invoke([human_message1, ai_message1,
+human_message2])
+print(ai_message2.content)
+
+
+------------------------
+import os
+from langchain_core.messages import SystemMessage,
+HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") #function
+llm = ChatOpenAI(model="gpt-4o",api_key=OPENAI_API_KEY)
+msgs = []
+sys_msg = SystemMessage( content = "You are a helpful
+assistant and answer in simple english and in concise way")
+msgs.append(sys_msg)
+while True:
+question = input("You: ")
+if question.lower() == "exit":
+break
+msgs.append(HumanMessage(content = question))
+print('The Number of messages sending:', len(msgs))
+ai_message = llm.invoke(msgs)
+msgs.append(ai_message)
+print('AI:', ai_message.content)
+
+
+--------------------------------------
+Context: It is information available to the model that helps it
+understand current request.
+Context Window: It is the maximum amount of information an
+LLM can consider at one time while generating response.
+
+
+
+Context Window size is measured in terms of tokens.
+| Model | Context window |
+| ----------------- | ----------------------: |
+| **GPT-5.6 Sol** | **1.05 million tokens** |
+| **GPT-5.6 Terra** | **1.05 million tokens** |
+| **GPT-5.6 Luna** | **1.05 million tokens** |
+| GPT-5.4 | 1.05 million tokens |
+| GPT-5.4 Mini | 400,000 tokens |
+| GPT-5.4 Nano | 400,000 tokens |
+| GPT-4.1 | 1,047,576 tokens (~1M) |
+| GPT-4o | 128,000 tokens |
+
+
+
+AI plans and api key both are different.
+plans to interactive with UI and get the question and answers format.
+api key is used as a separate billing and developer purpose along with langchain.
+
+

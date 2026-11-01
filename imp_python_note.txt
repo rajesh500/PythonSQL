@@ -1,5 +1,0 @@
-#accessing a column value from a row (when conne)
-print(row[0])
-
-#result = connection.execute(create_tbl).fetchall()
-#result = connection.execute(create_tbl).fetchone()

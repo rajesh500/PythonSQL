@@ -245,6 +245,12 @@ Execution memory
 Storage memory
 Temporary disk space
 
+## An Apache Spark execution hierarchy flows from top to bottom as: Application → Job → Stage → Task.
+• Spark Application: The entire program you run (launched via a driver and worker executors).
+• Spark Job: A single computation triggered every time you call a Spark action (such as count(), collect(), or write()). If your code has three actions, it generates three separate jobs.
+• Stage: A job is broken down into stages separated by shuffle boundaries (wide transformations like join() or groupBy()) where data is redistributed across the cluster.
+• Task: Each stage is further divided into tasks, where a single task processes one individual data partition in parallel on an executor.
+
 ## AQE (Adaptive  Query Execution):
 Adaptive Query Execution (AQE) in Apache Spark 3.0+ is a dynamic optimization framework that re-optimizes query plans during runtime based on statistics from completed stages. By adjusting partition sizes, join strategies, and handling data skew on the fly, AQE significantly reduces manual tuning and improves performance. It is enabled by default in Spark 3.2.0 and later.
 
@@ -268,6 +274,12 @@ Once a Spark job is submitted via spark-submit, a Driver program is launched, wh
 ## Predicate pushdown:
 Predicate pushdown is a performance optimization technique in Apache Spark that moves filtering logic (predicates) directly to the data source rather than loading all data into Spark's memory first. By evaluating filters at the storage layer, Spark significantly reduces I/O, network traffic, and memory consumption.
 
+spark.read.format("parquet").load("path").filter("country == 'US'")
+spark.read.format("delta").load("path").filter("country == 'US'").
+
+predicate pushdown works for parquet, delta table and JSON.
+csv it will not work, it has to read all the data and filter out.
+spark.read.format("csv").load("path").filter("country == 'US'").
 
 ## parquet file:
 columnar-oriented data storage designed for high-performance data processing in Hadoop ecosystem.

@@ -603,7 +603,7 @@ id	model	price	id	model	price
 
 -----  alphabet in order   -- helpful in when ordering required in alphabetical order (lexicographically)
 ASCII('A')  -- 65
-ASCII('a')  -- 65
+ASCII('a')  -- 97
 
 changing numbers back to alphabets
 chr(65) -- A 
