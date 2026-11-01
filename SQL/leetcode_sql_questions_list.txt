@@ -40,8 +40,13 @@ Task                                                                            
 2701. Consecutive Transactions with Increasing Amounts
 2720. Popularity Percentage                                                         2
 2752. Customers with Maximum Number of Transactions on Consecutive Days
+<<<<<<< Updated upstream
 2793. Status of Flight Tickets                                                      2
 2991. Top Three Wineries                                                            2
+=======
+2793. Status of Flight Tickets
+2991. Top Three Wineries                                                            
+>>>>>>> Stashed changes
 2994. Friday Purchases II
 2995. Viewers Turned Streamers
 3052. Maximize Items                                                                 2
