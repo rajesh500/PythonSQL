@@ -53,7 +53,8 @@ df/b catalog and schema:
 finance is the catalog, with in this catalog a schema will be created.
 
  
-Lakehouse architecture:  Combination of Dataware house and data lake architecture is called lakehouse.  Both can be done in databricks.
+Lakehouse architecture:  Combination of Dataware house and data lake architecture is called lakehouse.  
+Both can be done in databricks.
 Dataware house architecture:
 structured data --> ETL --> Dataware house --> BI, reports 
 
@@ -206,10 +207,7 @@ d/w views and tables:
 view is created under neath of table query.
 
 CTAS (create table as select)
-deep clone and shallow clone:
-deep clone --> metadata and data will be copied.  (double storage)
-shallow --> only metadata, data still point to the version of table you created.
-directly insert into shallow table, it will not reflect into main table.
+
 
 
 
@@ -313,6 +311,21 @@ use optimize:
 large batch ingestion, streaming ingestion, incremental writes.
 not use:
 small tables, frequnet updates..
+
+
+Ex: %sql
+OPTIMIZE default.sales_demo
+ZORDER BY (product, customer_id);
+
+Backend after optimize command executed:
+• The Rewrite: Databricks reads the existing data files, groups and sorts the rows using the Z-order algorithm, 
+  and writes them back out as brand-new, tightly packed Parquet files inside those partitions.
+• The Log Update: The Delta transaction log (_delta_log/) records that the old files are removed, 
+  the new files are added, and it stores the exact min and max values of the Z-ordered columns for every single 
+  new file.
+• The Query Payoff: When a user queries the table, Spark never guesses. It reads the lightweight transaction log 
+  first, finds which specific files contain the target min/max range, and reads only those files from storage while
+  ignoring the rest.
 
 
 Vaccum:
@@ -525,6 +538,8 @@ you can think of the driver node as the coordinating or “master” node in a D
 ## Liquid Clustering:
 Liquid Clustering is a modern data layout optimization feature in Delta Lake that replaces many traditional uses of partitioning and Z-Ordering. 
 It allows Delta tables to continuously reorganize data based on clustering keys without requiring static partitions.
+reorganize it willn't done automatically once data enter into the table.
+backend optimize command need to run on the table.
 
 Why was Liquid Clustering introduced?
 
@@ -625,11 +640,44 @@ No need to rerun it to reorganize the data.
 
 
 
+Why Use Liquid Clustering Over Z-Ordering?
+
+While both features aim to improve query performance via data co-location, they handle backend file rewrites very differently:
+• The Z-Ordering Problem (Full Rewrites): Z-ordering is rigid and expensive. 
+  Even a tiny data change (like inserting a single new record) forces Databricks to read, re-sort, and rewrite 
+  the entire partition from scratch.
+• The Liquid Clustering Solution (Incremental Rewrites): Liquid Clustering introduces an incremental approach. 
+  For example, if File 1, File 2, and File 3 are loaded on Day 1, running OPTIMIZE sorts and merges them into a 
+  single optimized file (File 4). On Day 2, when a new file (File 5) arrives, Databricks skips reading the 
+  already-clustered File 4 and isolates its work to sorting File 5.
+
+Backend Intelligence & File Merging Rules
+
+Databricks dynamically manages file layouts based on optimal target sizes (~1 GB) using a smart decision matrix:
+1. Small File Merge: If the newly added File 5 is tiny, Databricks evaluates nearby files. 
+   If it can merge File 5 into File 4 without violating size thresholds, it combines them. However, 
+   if File 4 is already at a perfectly healthy size, Databricks may temporarily leave the small File 5 alone until 
+   more data arrives to justify a bundle.
+2. Large File Isolation: If File 5 is already massive upon ingestion, Databricks sorts it internally but will not 
+   merge it with File 4. Both files remain independent to save compute power and cost.
+3. Automated Governance: Databricks entirely automates this process—deciding exactly when to merge based on file 
+   health versus operational costs.
+
+Resolving Data Scattering (Clustering Decay)
+
+If a high-volume customer's data naturally spans across multiple large files over time, Spark must open those 
+multiple files during a query. To prevent performance from degrading, Databricks continuously monitors the table 
+layout. If it detects that a specific customer's records have become too scattered across different files, 
+a subsequent OPTIMIZE command will automatically trigger a deeper, global re-clustering. 
+It sweeps up those fragmented files and rewrites them, concentrating that customer's data back into the absolute 
+minimum number of physical files
+
+
 Persistance: storage can be done at three levels.
 from pyspark import StorageLevel
 
 df.persist(StorageLevel.MEMORY_ONLY)
-df.persist(StorageLevel.MEMORY_AND_DISK)
+df.persist(StorageLevel.MEMORY_AND_DISK_2)
 df.persist(StorageLevel.DISK_ONLY)
 
 Cache(): data store in primarily executor memory and, depending on the storage level, local executor disk.
@@ -637,9 +685,50 @@ persist() has three options.
 persist(StorageLevel.MEMORY_AND_DISK) is generally safer than relying on cache().
 this is used in production.
 
+
+
+cache() default option is MEMORY_AND_DISK, which means data store in RAM memory and rest write into disk.  
+        If the node is crashed then no recovery of data.
+persist() also has the option MEMORY_AND_DISK_2 which means data store in RAM memory and keeps copy into disk.
+        still has the option to recovery because copy option available in disk.
+
+** If you use standard cache() or persist(StorageLevel.MEMORY_ONLY), Spark stores the data as raw, 
+   uncompressed Java objects in RAM.
+StorageLevel.MEMORY_ONLY_SER or StorageLevel.MEMORY_AND_DISK_SER --> SER 
+means When you select a level ending in _SER (which stands for Serialized), Spark runs a compression algorithm on 
+your DataFrame, turning it into a compact stream of raw bytes before placing it in RAM.
+
+** No, compression is not available in cache()
+
+
+When to use:
+Cache():
+• You reuse a DataFrame multiple times: You are using the exact same DataFrame in 3 or more subsequent cell steps (e.g., saving it, counting it, and joining it).
+• Your cluster has plenty of RAM: The data easily fits within your worker nodes' available memory.
+• You want clean, simple code: You don't want to import extra Spark libraries; you just need a quick speed boost.
+
+persist():
+Scenario A: You are running out of memory (OOM Errors).
+• The Problem: Your DataFrame is massive. If you use cache(), it stores data uncompressed, 
+  filling up your JVM RAM and causing the cluster to crash with an OutOfMemory error.
+• The persist() Choice: Use persist(StorageLevel.MEMORY_ONLY_SER). The _SER stands for Serialized. 
+  This tells Spark to compress the data into raw bytes. It takes up to 2x to 5x less RAM space, keeping your cluster alive.
+
+Scenario B: You want to save memory for heavy computations
+• The Problem: You have a massive table that takes 30 minutes to compute, but you need your cluster's RAM entirely 
+  free to run a heavy machine learning algorithm right after it.
+• The persist() Choice: Use persist(StorageLevel.DISK_ONLY). This completely bypasses the cluster's RAM and 
+  writes the processed DataFrame straight to the worker nodes' local SSDs. Your RAM stays 100% empty and optimized
+  for the ML model, but you still won't have to recompute that 30-minute table.
+
+
+
+df.unpersist() --> for both cache or persist to free up space after use.
+
+
 workflow - jobs 
 Task level:
-type: notebook, pythons cript, python wheel, SQL, delta live tables pipeline, dbt, JAR, spark submit, run job, if/else condition, for each 
+type: notebook, python script, python wheel, SQL, delta live tables pipeline, dbt, JAR, spark submit, run job, if/else condition, for each 
 source: workspace, github
 parameters : add widgets here
 depentdent libraries
@@ -656,13 +745,8 @@ permissions
 schedules & Triggers
 
 
-COPY INTO to load data:
-same file if we run multiple time data will not be duplicated (idempotent)
-support multiple files
 
-
-
-
+## cluster configuration
 spark job process 25GB file, how much a cluster configuration is required.
 25GB = 25 * 1024 MB = 25600 MB
 no of partitions = 225600 /128 = 200 
@@ -704,12 +788,12 @@ delta live table has three options during pipeline creation core, advance, premi
 table, view and materialized view.
 
 materialized view:
-peridically refreshed
+periodically refreshed
 
 
 
 Delta live table can be used a source for append only or even truncate this table and source as source.
-If live table is used as source then always data should append it. if truncate the table pipeline will be failed but in databricks.
+If live table is used as source then always data should append it. if truncate the table pipeline will be failed in databricks.
 we have an option during reading readStream.option("skipChangeCommits", "true")  --> if we enable this option live table can be used in either ways.
 
 
@@ -721,7 +805,7 @@ Databricks optimization:
 4. Data caching
 5. Broadcast joins
 6. optimize ( file compaction). can be done by pipeline or automatically by enable future.
-7. ADQ
+7. AQE
 8. SKEW handling
 9. Repartitioning and coalescing
 10. column pruning and predicate pushdown.
@@ -755,7 +839,6 @@ name         STRING
 email        STRING
 
 Incoming data has:
-
 customer_id  BIGINT
 name         STRING
 phone        STRING
@@ -778,18 +861,16 @@ spark.read.format(“delta”).load(“/FileStore/tables/deltadata/”, versionA
 
 
 
-update delta tables:
-
+## update delta tables:
 from delta.tables import DeltaTable
 dtable=DeltaTable.forpath(spark, “/FileStore/tables/deltadata/”)
 dtable.update(“ccontact is null”, {“ccontact”:”889977”})
 
 dtable.update(“cid=2”, {“cname”:”’rama krishna’”})
 
-delete:
-
+## delete:
 dtable.delete(“cid=2”)
-dtable.delete(“cid in (1,2”)
+dtable.delete(“cid in (1,2”))
 
 
 dtable.toDF().show()
@@ -809,32 +890,25 @@ Select * from mydeltatable;
 
 .crc and .json are commits 
 
-
-
 Df.write.format(‘delta’).save(“/FileStore/tables/scdtarget/”)
 
 
-SCD-1:
-
+# SCD-1:
 from delta.tables import DeltaTable
 targetdata=DeltaTable.forpath(spark, “/FileStore/tables/scdtarget/”)
 
 
-df11=df.spark.createDataFrame([(1, ‘ramu’, ‘pune’),(2, ‘srinu’, ‘delhi’)], [‘cid’, ‘cname’, ‘clocation’])
-
+df11=df.spark.createDataFrame([(1, ‘ramu’, ‘pune’),(2, ‘sri’, ‘delhi’)], [‘cid’, ‘cname’, ‘clocation’])
 df11.write.format(‘delta’).save(“/FileStore/tables/sourcedata”)
-
 updatedata=spark.read.format(‘delta’).load(“/FileStore/tables/sourcedata”)
 updatedata.show()
 
 
 from delta.tables import DeltaTable
 targetdata=DeltaTable.forpath(spark, “/FileStore/tables/scdtarget/”)
-
 targetdata.alias(“a”).merge(updatedata.alias(“b”), col(“a.cid”)==col(“b.cid”)).
 whenMatchedupdate(set={“clocation”:”b.clocation”}).whenNotMatchedInsert(values={“cid”:”b.cid”, “cname”:”b.cname”, “clocation”:”b.clocation”}).execute()
 targetdata.toDF().show()
-
 
 
 targetdata.vacuum(200)
@@ -843,8 +917,6 @@ targetdata.vacuum(200)
 Long term data will not be preferred here
 
 By using vaccum we will define how time to store history.
-
-
 
 
 
@@ -868,7 +940,6 @@ Executor OOM
 
 
 Scenario 2: Data Skew
-
 Example:
 Customer A = 90% of records
 Other customers = 10%
@@ -890,7 +961,6 @@ Executor OOM
 
 
 Scenario 3: Large Shuffle
-
 Operations like:
 groupBy()
 join()
@@ -914,8 +984,7 @@ Spill to disk
 Then OOM
 
 
-Scenario 5: Cache/Persist
-
+Scenario 4: Cache/Persist
 Example:
 df.cache()
 
@@ -936,9 +1005,7 @@ Executor OOM
 What is Shuffling in Spark?
 
 Shuffling is the process of moving data across executors/partitions so that Spark can perform operations such as joins, aggregations, sorting, and distinct.
-
 It is one of the most expensive operations in Spark because it involves:
-
 Network I/O
 Disk I/O
 Serialization/Deserialization
@@ -946,17 +1013,13 @@ Sorting
 
 
 Simple Example
-
 Suppose you have data:
-
 Partition 1                Partition 2
-
 (A,100)                    (A,200)
 (B,300)                    (B,400)
 (C,500)                    (C,600)
 
 Now run:
-
 df.groupBy("customer_id").sum("amount")
 
 Spark needs all records for the same customer together.
@@ -990,7 +1053,6 @@ df.repartition(100)
 
 
 Real Interview Example
-
 Suppose:
 Fact Table = 1 TB, Dimension Table = 500 GB
 
@@ -1005,7 +1067,6 @@ Result:
 Slow job
 High memory usage
 Possible OOM
-
 
 
 How to Reduce Shuffle:
@@ -1049,14 +1110,16 @@ client_secret = dbutils.secrets.get(scope="kv-scope", key="client-secret")
 
 
 
-Deep clone vs Swallow clone:
+## deep clone and shallow clone:
+deep clone --> metadata and data will be copied.  (double storage)
+shallow --> only metadata, data still point to the version of table you created.
+directly insert into shallow table, it will not reflect into main table.
 
 CREATE TABLE target_table
 DEEP CLONE source_table;
 
 cloned table doesn't dependent on main table (like, update, delete, insert).
 swallow clone dependent on main table.
-
 
 Deep Clone only supports Delta tables. It does not support views.
 
@@ -1125,7 +1188,8 @@ When table_changes(table, 1, 3) is queried, first it read all the delta transact
 00000000000000000002.json
 00000000000000000003.json
 from their. it will know what cdf changes are happened in between these three versions.
-for insert it will read parquet files of that version, for update and delete it reads from cdf files for version 1 to 3.
+for insert it will read parquet files of that version, for update and delete 
+it reads from cdf files(_change_data hidden directory) for version 1 to 3.
 
 
 Example:
@@ -1194,7 +1258,31 @@ _delta_log/
 For a current snapshot, Delta starts with a relevant checkpoint and applies later JSON commits.
 For CDF, Databricks still processes the commits in the requested change range because each commit identifies its change files and operation.
 
+Working mechanism of CDF:
+ 1.Data Changes (Inserts vs. Updates/Deletes)
+• Your Point: When we insert data, a regular data parquet file is created. For updates or deletes, 
+  a separate file is created in a _change_data directory.
+• Verification: Correct. Databricks is optimized to save storage. For a pure INSERT, 
+it doesn't waste space duplicating data into a change folder. It just flags the regular data file as an addition. 
+For UPDATE and DELETE, it writes the specific row-level alterations into _change_data/ files.
 
+2. The Delta Transaction Log (_delta_log)
+• Your Point: The location/information of both regular data files and _change_data files is stored in the delta 
+transaction log.
+• Verification: Correct. When a transaction occurs, the JSON file created in the _delta_log/ directory tracks
+ everything.
+	• For inserts, it records a standard add action for the new data file.
+	• For updates/deletes, it records a standard remove action (for the old file), an add action 
+    (for the rewritten file), plus a special cdc action block. This cdc block specifically tells the engine: 
+    "Here is the path to the file inside _change_data/ containing the exact pre-images and post-images for this 
+    change."
+
+3. Querying the Feed
+• Your Point: When querying, the engine reads the transaction log first to find the metadata/versions. 
+For updates and deletes, it reads from the change_data log file.
+• Verification: Correct. The engine uses the transaction log as a map. If it sees a version with an INSERT, 
+it pulls directly from the main data files. If it sees an UPDATE or DELETE, it automatically redirects its read 
+head to the files listed in that special cdc block inside the _change_data/ folder.
 
 
 
@@ -1313,27 +1401,6 @@ In legacy architecture even though it is a live pipeline, data will not directly
 A LIVE intermediate layer is added internally and then load into the table. but using DPM their is no intermediate layer directly load into the table.
 
 
-## 
-Auto Loader:  (incrementally processing new file)   ( this concept is for only files)
-Auto Loader is a Databricks feature that automatically detects and incrementally processes new files arriving in cloud storage (such as ADLS, S3, or GCS).
-Instead of reading the entire folder every time, Auto Loader remembers which files have already been processed and only reads new ones.
-
-Exmaple:
-df = (
-    spark.readStream
-         .format("cloudFiles")
-         .option("cloudFiles.format", "csv")
-         .load("/orders")
-)
-
-
-Auto loader vs DLT:
-Auto Loader is for file ingestion.
-DLT (now Lakeflow Declarative Pipelines) is for building end-to-end ETL pipelines.
-
-
-AUTO CDC is not a setting that you enable with a checkbox.
-You create a CDC flow in a Lakeflow Declarative Pipeline. Databricks then automatically applies inserts, updates, and deletes into a target streaming table.
 
 
 
@@ -1408,12 +1475,6 @@ Add 100 metadata records.
 The framework processes all 100 tables dynamically using the same codebase
 
 
-
-
-
-
-
-
 Traditional ETL Approach: developing three pipeline for each table.
 Suppose your company has 3 source tables:
 Customer
@@ -1422,14 +1483,13 @@ Products
 
 
 Metadata Driven ETL
-
 Instead of writing code, you create a metadata table.
 
 Metadata Table
-Source Table    Target Table    Load Type   Filter        Watermark
-customer        dim_customer    Full        isActive=1    NULL
-orders          fact_orders     Incremental NULL          modified_date
-products        dim_product      Full        NULL         NULL
+Source Table    Target Table    Load Type   Filter         Watermark
+customer        dim_customer    Full        isActive=1     NULL
+orders          fact_orders     Incremental  NULL          modified_date
+products        dim_product      Full        NULL          NULL
 
 Notice there is no PySpark code for individual tables.
 
@@ -1483,9 +1543,6 @@ No matter whether you have 10 tables, 100 tables, or 1,000 tables, you still use
 1 metadata table
 
 The only thing that changes is the metadata.
-
-
-
 simple logic for multiple tables go with metadatadrive:
 
 complex logic, no way of creating generic then completely develop a separate pipeline for each.
@@ -1511,11 +1568,6 @@ Simple Load     Complex Load
       │             │
       ▼             ▼
 Generic Logic   Custom Notebook
-
-
-
-
-
 
 
 ## Delta Lake vs Apache Iceberg:
@@ -1698,10 +1750,17 @@ Created automatically   Specified by developer
 Metadata optimization   Failure recovery and exactly-once processing
 Interview Answer
 
-A Delta Log checkpoint is a Parquet snapshot of a Delta table's transaction log. Every write operation creates a JSON log in the _delta_log directory, and replaying thousands of JSON files would slow table initialization. To avoid this, Delta Lake automatically creates checkpoint Parquet files at regular commit intervals (default every 10 commits). When a table is read, Spark loads the latest checkpoint and only the newer JSON logs, significantly reducing metadata read time and improving query performance.
+A Delta Log checkpoint is a Parquet snapshot of a Delta table's transaction log. 
+Every write operation creates a JSON log in the _delta_log directory, and replaying thousands of JSON files 
+would slow table initialization. To avoid this, Delta Lake automatically creates checkpoint Parquet files at 
+regular commit intervals (default every 10 commits). When a table is read, Spark loads the latest checkpoint 
+and only the newer JSON logs, significantly reducing metadata read time and improving query performance.
 
-Real-time Example
 
+The .json files inside the _delta_log/ folder contain the metadata (the "recipe book") of the table, 
+not your actual business data
+
+Real-time Example:
 Suppose your ADF pipeline writes to a Delta table every 5 minutes:
 
 ADF
@@ -1763,7 +1822,6 @@ At a high level, Databricks architecture has two major parts:
 
 control plane:
 The control plane is primarily managed by Databricks. It provides the management and orchestration services for a workspace.
-
 It handles:
 Databricks web interface
 Workspace configuration
@@ -1778,10 +1836,8 @@ Monitoring information
 Unity Catalog integration
 metadata 
 
-Compute Plane
-
+Compute Plane:
 The compute plane contains the resources that execute the actual workload.
-
 It handles:
 Spark execution
 Databricks SQL queries
@@ -2533,12 +2589,28 @@ duplicate and non duplicate counts validation.
 
 
 
+## 
+Auto Loader:  (incrementally processing new file)   ( this concept is for only files)
+Auto Loader is a Databricks feature that automatically detects and incrementally processes new files arriving in cloud storage (such as ADLS, S3, or GCS).
+Instead of reading the entire folder every time, Auto Loader remembers which files have already been processed and only reads new ones.
+
+Exmaple:
+df = (
+    spark.readStream
+         .format("cloudFiles")
+         .option("cloudFiles.format", "csv")
+         .load("/orders")
+)
 
 
+Auto loader vs DLT:
+Auto Loader is for file ingestion.
+DLT (now Lakeflow Declarative Pipelines) is for building end-to-end ETL pipelines.
 
 
-### Auto Loader:
-process files incrementally
+AUTO CDC is not a setting that you enable with a checkbox.
+You create a CDC flow in a Lakeflow Declarative Pipeline. Databricks then automatically applies inserts, updates, and deletes into a target streaming table.
+
 
 
 Auto Loader:
@@ -2549,9 +2621,7 @@ df = (spark
         .option("cloudFiles.format", "json")  # the actual format of out data files. Tells AutoLoader to expect json files
         .option("cloudFiles.useNotifications",True) # Should AutoLoader use a notification queue
         .schema(some_custom_schema)  # custom schema of the actual data file
-        .load(f"{actual_data_location}/directory") # location of the actual data file
-    )
-
+        .load(f"{actual_data_location}/directory") # location of the actual data file)
 
 query = final_df.writeStream \
     .format("delta") \
@@ -2564,8 +2634,7 @@ query = final_df.writeStream \
 query.awaitTermination()
 
 
-
-ingest data in both batch and steam mode.
+ingest data in both batch and stream mode.
 two file detection modes or file discovery modes.
 1. Directory List (uses API calls to detect new files)
 	RocksDB is used for Metata
@@ -2576,25 +2645,17 @@ two file detection modes or file discovery modes.
 
 automatically detect the schemas based on files
 
-
-
-
 checkpoint directory required.
 autoloader store schema for schema evulotion purpose in the checkpoint location (cloudFiles.schemaLocation).
 
 Read all column in string.
 schemaHints used to define the column data types even file reading in string format we can define column data types using schemaHints.
 
- 
-
-
 Schema Evolution modes: 
 default addNewcolumn
 rescue.  will not fail when new column added, default it will add _rescued_data field added and data write into this field. Instead of failing the pipelie.
 failonnewcolumn
 None  new field will not accept it.
-
-
 
 How autoloader knows which file it is already processed.
 source has 3 files on day1, autoloader process these files and maintain a metadata in the checkpoint.
@@ -2607,11 +2668,8 @@ SELECT *
 FROM cloud_files_state('/checkpoints/orders');
 
 
-
 Checkpoint location delete:
 Ideally we shouldn't delete it, if it is deleted autoloader will reprocess those file again, because autoloader will know what files process by checkpoint path.
-
-
 
 continues stream or trigger batches:
 .trigger(availableNow = True) --> write data in batch mode.
@@ -2622,14 +2680,12 @@ if already a micro batch is process no new batch will run parallel, until the fi
 
 If their is no files after few micro batches, micro batch triggeres check for file, if no new file just empty run.
 
-
 two Auto Loader pipelines use the same checkpoint? No. Each streaming query should have its own checkpoint
 
 
 Can I change the source path and continue using the same checkpoint?
-Be careful. Major query/source changes against an existing checkpoint can be incompatible. In production, checkpoint identity should correspond to a specific streaming pipeline.
-
-
+Be careful. Major query/source changes against an existing checkpoint can be incompatible. 
+In production, checkpoint identity should correspond to a specific streaming pipeline.
 
 Auto Loader vs COPY INTO — when would you choose each?
 A good explanation:
@@ -2646,7 +2702,6 @@ COPY INTO
    → less streaming-oriented
 
 
-
    Autoloader will not process two same files name.
    example: landing/orders.csv
    			landing/orders.csv
@@ -2656,7 +2711,6 @@ COPY INTO
 
 
 In a file duplicate records are thier, autoloader will process those duplicate records because autoloader tracks at file level not at data level.
-
 
 
 One millions files arrived in the source.
@@ -2671,7 +2725,6 @@ size based on
 
 
 stream process: here also processing will be done by micro batches based on processingtime.
-
 
 
 how does it discover 1 million files?
@@ -2705,11 +2758,32 @@ After initial synchronization, Auto Loader can use the file-event cache to incre
 Bad/malformed source record
 For CSV/JSON you can choose how malformed data is handled. Auto Loader also supports _rescued_data for certain schema/type mismatches.
 
+Auto Loader handles bad records using a PERMISSIVE parser mode combined with a built-in feature called the 
+Rescued Data Column (_rescued_data).
+• Mechanism: When row 500 contains a corrupt data type, Auto Loader does not fail the file. 
+  Instead, it loads all 999 good rows perfectly. For the 1 corrupt row, it places a NULL in the broken column but 
+  captures the entire original raw text row as a JSON blob inside a hidden column named _rescued_data.
+• Result: The file is marked as processed, the good rows are loaded, and the bad row is successfully quarantined 
+  directly inside the destination Delta table for you to easily query and fix later.
+
+python
+# Databricks Auto Loader configuration catching row-level errors
+df = spark.readStream.format("cloudFiles") \
+  .option("cloudFiles.format", "csv") \
+  .option("cloudFiles.rescuedDataColumn", "_rescued_data") \
+  .load("/mnt/input")
+
+
 
 "Auto Loader is processing 1,000 files. The micro-batch fails halfway through. What will you do?"
 
 A strong answer is:
-“Auto Loader runs on Structured Streaming, so I would preserve the existing checkpoint. If a micro-batch fails, it isn't recorded as successfully committed. I first identify and fix the root cause—such as schema change, bad data, OOM, or infrastructure failure—and restart the stream using the same checkpoint. Structured Streaming resumes from the last successful checkpoint and retries the unsuccessful batch. When writing directly to Delta, Delta transactions and checkpointing provide exactly-once committed output.
+“Auto Loader runs on Structured Streaming, so I would preserve the existing checkpoint. 
+If a micro-batch fails, it isn't recorded as successfully committed. 
+I first identify and fix the root cause—such as schema change, bad data, OOM, or infrastructure failure—and 
+restart the stream using the same checkpoint. Structured Streaming resumes from the last successful checkpoint 
+and retries the unsuccessful batch. When writing directly to Delta, Delta transactions and checkpointing provide 
+exactly-once committed output.
 
 
 
@@ -2719,7 +2793,13 @@ fix the issue and rerun, it starts from where it left.
 
 
 500GB file processing with autoloader:
-For a single 500 GB file, Auto Loader will place that entire file in one micro-batch. Auto Loader does not split one file across multiple micro-batches. Spark can still process the contents of that file in parallel using multiple partitions/tasks when the file format supports parallel reads. If that micro-batch fails after processing part of the file, Auto Loader does not maintain a byte-level checkpoint such as “300 GB completed.” When the failed micro-batch is retried, the file is processed again as part of that micro-batch. Auto Loader checkpointing tracks stream progress and file-processing state, not an offset inside an individual file.
+For a single 500 GB file, Auto Loader will place that entire file in one micro-batch. 
+Auto Loader does not split one file across multiple micro-batches. 
+Spark can still process the contents of that file in parallel using multiple partitions/tasks when the file format 
+supports parallel reads. If that micro-batch fails after processing part of the file, 
+Auto Loader does not maintain a byte-level checkpoint such as “300 GB completed.” 
+When the failed micro-batch is retried, the file is processed again as part of that micro-batch. 
+Auto Loader checkpointing tracks stream progress and file-processing state, not an offset inside an individual file.
 
 autoloader checkpoint concept will work at file level not at the data level inside of a file.
 
@@ -2792,7 +2872,7 @@ cloudFiles scales efficiently to discover billions of files.
 
 ### copy into:
 It is also used to copy data from files into delta table.
-copy into is an idempotent, even rerun same file again and again. data will not loaded more than once.
+copy into is an idempotent, even rerun same file again and again data will not loaded more than once.
 
 How copy into main idempotent.
 Once data loaded into delta table, a delta log file get created inside a copy_into_log file get created.
@@ -2828,8 +2908,6 @@ COPY INTO rajeswariade.bronze.orders_raw
 FROM 'abfss://landing@<storage-account>.dfs.core.windows.net/ecommerce/orders/'
 FILEFORMAT = CSV
 FORMAT_OPTIONS ('header' = 'true');
-
-
 
 
 
@@ -5634,6 +5712,43 @@ product2 = response.content # download the content from URL and save in text or 
 print(product["id"])
 print(product["title"])
 print(product1)
+
+
+
+
+
+How would you optimize a slow join between two large Delta tables in Databricks?
+
+since both are large tables sort merge join is going to perform.
+Implement Liquid clustering: this will help to reoragnise the data, which will help in the scanning.
+Run OPTIMIZE and ANALYZE: merge the small into a large, this avoid scanning multiple file and fewer files helps to scan faster.
+						  analyze command get the statistic on table and gives best exection plan.
+Join on Partition Keys:
+Increase Shuffle Partitions: default is 200 partition, shuffling and sorting everything need to be done with in these partitions.	
+							 increase to 2000 partitions, so shuffling can be done quick
+
+enable AQE
+filter data earlier, select required columns, implementing predicate pushdown.
+enable photon engine and select the right cluster size.
+
+
+
+
+Auto Loader is not an alternative to Structured Streaming; it is an optimization built inside Structured Streaming.
+When you use Auto Loader (cloudFiles), you are still using the Structured Streaming engine to process your data every 5 minutes.
+
+
+can we recover the checkpoint path after deletion
+Yes, you can recover a deleted checkpoint path and its contents, but your ability to do so depends entirely on your Azure Storage Account configurations at the time of deletion.
+If Blob Soft Delete or Container Soft Delete was enabled on your Azure Storage Account prior to the deletion, the data is not permanently gone. It is safely hidden in a trash state for a set retention period (usually 7 to 30 days).
+
+we can recover till it.
+
+
+
+
+
+
 
 
 
