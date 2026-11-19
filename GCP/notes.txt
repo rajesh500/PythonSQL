@@ -1,0 +1,100 @@
+GCS (google cloud service)
+VM virtual machine --> compute engine
+data proc compute engine
+Hadoop
+spark
+databricks
+Airflow
+bigquery
+pubsub
+dataflow
+apache beam
+
+
+GCS:
+bucket
+
+
+storage class: BY depending on frequency of accessing your files we have to select our storage class.
+standard storage: by using this class we can access our files on daily basis [more money]
+Nearline storage: by using this class we can access our files on monthly basis
+Coldline storage: by using this class we can access our files on quarterly basis
+Archive storage: by using this class we can access our files on yearly basis [less money].
+Rapid:  Best for highest frequency reads and writes. Only available for zones.
+
+
+Location: 
+	Single Region: Your data would be available in only single location of GCP datacenter. [Mumbai - single region] [Non high availability feature]
+	Multi region: Your data would be available in multiple locations of GCP datacenter. [US,UK,In]     [Highest Availability]
+	Dual region: Your data would be available in only two locations of GCP datacenter. [US,In]         [High availability]
+
+	** Add cross-bucket replication via Storage Transfer Service
+		As data is added or changed, replicate it to another bucket, enabling you to store a copy that follows different bucket settings - e.g., region, storage class, etc. 
+
+	Which means maintain a backup of buckets.
+
+
+Optimize storage for data-intensive workloads:
+Hierarchical namespace: Optimize for AI/ML and analytics with a filesystem-like hierarchical structure. This permanent option enables atomic folder renames, faster folder listing, and other enhancements not available in Cloud Storage’s standard buckets that uses flat namespace.
+
+Enabled Rapid cache: Optimize for workloads where infrequently changed data is frequently read, such as ML model training or analytics. This option provides SSD-backed read caches in one or more zones within the bucket's location, allowing your workloads to get more throughput and avoid multi-region data transfer fees.
+
+
+IP filtering: allow only specific IP's to access file or bucket.
+
+Data protection: 
+		Soft delete policy 
+						-- use default retension duration  (7 days)
+						-- set custom retension duration
+		Object versioning
+		Retension
+
+Encryption type: 
+	Google managed encryption keys --> Google-managed and Cloud KMS
+	Cloud KMS keys
+
+
+Once bucket created.
+permissions
+	Admin
+	Reader
+	writer
+
+To access any bucket or storage account we need to give permission to that service or service should have permission to access it.
+
+
+Life cycle:
+create a rule to move file into Nearline, coldline and archieve. 
+When a file age condition meets then move the file into Nearline, coldline and archieve.
+
+Here we can use age, size above, size below created before, custom time, no of versions, modified or deleted...
+
+
+Event notification or file event notification:
+When a file arrives into bucket notify or run a job. This can achieve using (Eventarc + Cloud Run / Cloud Functions).
+
+
+VM virtual machine:
+
+
+Dataproc:
+we can able to create Hadoop clusters or spark clusters automatically.
+Dataproc to Managed Service for Apache Spark
+
+Dataproc: Google dataproc is a managed apache spark and apache hadoop service that simplifies the process of creating and managing clusters for bigdata processing and analytics. It allows you can quickly create and manage and scale cluster while taking advatnage of power of open source data processing framework.
+
+Features of Dataproc:
+--------------------
+1. Managed clusters: Dataproc takes care of cluster creation/scaling and management ..with that you can focus more on dataprocessing related tasks.
+2. Support for open source frameworks: It supports apache spark, apache hadoop, apache pig and apache hive ...
+3. Integrate with GCP services: 
+		Dataproc + GCS
+		Dataproc + compute engine
+		Dataproc + bigquery
+		Dataproc + composer 
+4. Customization: WHile creation of the cluster you can specify configuration of your cluster.
+	- single node cluster [single VM] [Same machine will act as team lead (master) and team member (worker)]
+	- multi node cluster [More than one VM (10 VM) ==> 1 VM master machine and all other machines are going to act as worker machines]
+	Master machine ==> Team lead [manage all the team mmbers/assign tasks/Details of Team members]
+	Worker machine ==> Team members 
+

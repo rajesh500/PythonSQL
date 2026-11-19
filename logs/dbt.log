@@ -1,0 +1,38 @@
+==================== 2026-11-13T23:03:52.039233Z | 01a1d727-2fdc-7f72-a9b6-3a7b4f0b2af3 ====================
+23:03:52.041188 [info ]: Installing dbt project and profile setup
+23:03:52.049903 [info ]: Info Created .vscode/extensions.json with dbt extension recommendation
+23:03:52.051533 [info ]: Success Project created successfully!
+23:03:52.051665 [info ]: Info Project name: jaffle_shop
+23:03:52.051688 [info ]: Info Project directory: jaffle_shop
+23:03:52.051716 [info ]: Info Setting up your profile...
+23:03:52.054182 [info ]: Info Creating new profile...
+23:04:03.875332 [info ]: No dbt_cloud.yml found - proceeding without cloud pre-population
+23:08:26.384972 [info ]: Success Profile written to /Users/rajeshjakkula/.dbt/profiles.yml
+23:08:26.394045 [info ]: Validating profile inputs, adapters, and connection
+
+23:08:26.395024 [info ]: dbt-core 2.0.0-alpha.5
+23:08:26.401954 [info ]: Started loading project
+23:08:26.435963 [info ]: Loading ~/.dbt/profiles.yml
+23:08:26.447638 [info ]: Finished loading project [  0.05s]
+23:08:26.449725 [info ]: Started debugging
+23:08:26.450023 [info ]: Debugging profile: dev
+23:08:26.450040 [info ]: Debugging dbt version: 2.0.0-alpha.5
+23:08:26.450059 [info ]: Debugging platform: macos aarch64 (unix)
+23:08:26.450471 [info ]: Debugging adapter type: snowflake (remote)
+23:08:26.517506 [info ]: Debugging dependencies:
+  git: OK
+23:08:26.520145 [info ]: Debugging connection:
+  "account": "RKNXETO-NU95370",
+  "user": "RAJESHDATAENG1@GMAIL.COM",
+  "database": "SNOWFLAKE_DB",
+  "warehouse": "SNOWFLAKE_DEV_WH",
+  "schema": "SNOWFLAKE_DB.BATCHDEV",
+  "role": "ACCOUNTADMIN"
+23:08:29.224769 [debug]: Query executed on node unknown:
+select 1 as id
+23:08:29.226904 [info ]: Debugging connection test: OK
+23:08:29.227169 [info ]: Debugged All checks passed!
+23:08:29.227266 [info ]: Finished debugging [  2.78s]
+23:08:29.296168 [info ]: 
+==================== Execution Summary =====================
+Finished 'init' successfully for target 'dev' [4m 37s]
